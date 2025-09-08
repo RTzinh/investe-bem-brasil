@@ -1,11 +1,29 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Header } from "@/components/layout/header";
+import { Navigation } from "@/components/layout/navigation";
+import { FinancialOverview } from "@/components/dashboard/financial-overview";
+import { RecentTransactions } from "@/components/dashboard/recent-transactions";
+import { InvestmentSummary } from "@/components/dashboard/investment-summary";
+import { AIInsights } from "@/components/dashboard/ai-insights";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="flex">
+        <Navigation />
+        <main className="flex-1 ml-64 p-6 space-y-8 animate-fade-in">
+          <FinancialOverview />
+          
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <RecentTransactions />
+            </div>
+            <div className="space-y-6">
+              <InvestmentSummary />
+              <AIInsights />
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );
