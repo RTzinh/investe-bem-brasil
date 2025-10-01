@@ -32,9 +32,14 @@ cd <YOUR_PROJECT_NAME>
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the backend API server.
+npm run server:dev
+
+# Step 5: In a new terminal, start the frontend development server with auto-reloading and an instant preview.
 npm run dev
 ```
+
+The backend API will be available at `http://localhost:4000/api` and the frontend expects it to be running when interacting with dashboards, relatórios, and importações de extrato bancário.
 
 **Edit a file directly in GitHub**
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, AlertTriangle, CheckCircle, TrendingUp } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Navigation } from "@/components/layout/navigation";
@@ -24,57 +25,36 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, parseFormattedCurrency } from "@/lib/formatters";
-
-interface Budget {
-  id: string;
-  category: string;
-  limit: number;
-  spent: number;
-  month: string;
-}
+import { api, Budget } from "@/lib/api";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Orcamentos() {
   const { toast } = useToast();
-  const [budgets, setBudgets] = useState<Budget[]>([
-    {
-      id: "1",
-      category: "Alimentação",
-      limit: 1000,
-      spent: 1245.80,
-      month: "2024-01",
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const queryClient = useQueryClient();
+
+  const { data: budgets = [], isLoading } = useQuery({
+    queryKey: ["budgets", selectedMonth],
+    queryFn: () => api.getBudgets(selectedMonth),
+  });
+
+  const createBudgetMutation = useMutation({
+    mutationFn: api.createBudget,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
     },
-    {
-      id: "2", 
-      category: "Transporte",
-      limit: 500,
-      spent: 380.45,
-      month: "2024-01",
-    },
-    {
-      id: "3",
-      category: "Lazer",
-      limit: 300,
-      spent: 125.30,
-      month: "2024-01",
-    },
-    {
-      id: "4",
-      category: "Saúde",
-      limit: 400,
-      spent: 450.00,
-      month: "2024-01",
-    },
-  ]);
+  });
 
   const [newBudget, setNewBudget] = useState({
     category: "",
     limit: "",
-    month: new Date().toISOString().slice(0, 7),
+    month: currentMonth,
   });
 
   const categories = [
     "Alimentação",
-    "Moradia", 
+    "Moradia",
     "Transporte",
     "Saúde",
     "Lazer",
@@ -87,9 +67,9 @@ export default function Orcamentos() {
 
   const getBudgetStatus = (budget: Budget) => {
     const percentage = (budget.spent / budget.limit) * 100;
-    if (percentage >= 100) return { status: 'exceeded', color: 'destructive' };
-    if (percentage >= 80) return { status: 'warning', color: 'warning' };
-    return { status: 'good', color: 'default' };
+    if (percentage >= 100) return { status: 'exceeded', color: 'destructive' } as const;
+    if (percentage >= 80) return { status: 'warning', color: 'warning' } as const;
+    return { status: 'good', color: 'default' } as const;
   };
 
   const getStatusIcon = (status: string) => {
@@ -105,7 +85,7 @@ export default function Orcamentos() {
     }
   };
 
-  const handleAddBudget = () => {
+  const handleAddBudget = async () => {
     if (!newBudget.category || !newBudget.limit) {
       toast({
         title: "Erro",
@@ -115,25 +95,33 @@ export default function Orcamentos() {
       return;
     }
 
-    const budget: Budget = {
-      id: Date.now().toString(),
-      category: newBudget.category,
-      limit: parseFormattedCurrency(newBudget.limit),
-      spent: 0,
-      month: newBudget.month,
-    };
+    try {
+      await createBudgetMutation.mutateAsync({
+        category: newBudget.category,
+        limit: parseFormattedCurrency(newBudget.limit),
+        month: newBudget.month,
+      });
 
-    setBudgets(prev => [budget, ...prev]);
+      toast({
+        title: "Orçamento Criado",
+        description: `Orçamento para ${newBudget.category} foi criado com sucesso.`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível criar o orçamento.';
+      toast({
+        title: "Erro",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setNewBudget({
       category: "",
       limit: "",
-      month: new Date().toISOString().slice(0, 7),
+      month: currentMonth,
     });
-
-    toast({
-      title: "Orçamento Criado",
-      description: `Orçamento para ${budget.category} foi criado com sucesso.`,
-    });
+    setSelectedMonth(currentMonth);
   };
 
   const totalBudget = budgets.reduce((acc, b) => acc + b.limit, 0);
@@ -192,7 +180,10 @@ export default function Orcamentos() {
                       id="month"
                       type="month"
                       value={newBudget.month}
-                      onChange={(e) => setNewBudget(prev => ({...prev, month: e.target.value}))}
+                      onChange={(e) => {
+                        setNewBudget(prev => ({...prev, month: e.target.value}));
+                        setSelectedMonth(e.target.value || currentMonth);
+                      }}
                     />
                   </div>
                   <Button onClick={handleAddBudget} className="w-full">
@@ -206,7 +197,7 @@ export default function Orcamentos() {
           <div className="grid gap-6 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Orçamento Total</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Planejado</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">{formatCurrency(totalBudget)}</p>
@@ -214,7 +205,7 @@ export default function Orcamentos() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Gasto Total</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Gasto</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-financial-loss">{formatCurrency(totalSpent)}</p>
@@ -222,98 +213,71 @@ export default function Orcamentos() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Restante</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Orçamentos Estourados</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className={`text-2xl font-bold ${totalBudget - totalSpent >= 0 ? 'text-financial-gain' : 'text-financial-loss'}`}>
-                  {formatCurrency(totalBudget - totalSpent)}
-                </p>
+                <p className="text-2xl font-bold text-destructive">{exceededBudgets}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Alertas</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Em Atenção</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-warning">{exceededBudgets + warningBudgets}</p>
+                <p className="text-2xl font-bold text-warning">{warningBudgets}</p>
               </CardContent>
             </Card>
           </div>
 
-          {(exceededBudgets > 0 || warningBudgets > 0) && (
-            <Card className="border-warning bg-warning/5">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-warning">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span>Alertas de Orçamento</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {exceededBudgets > 0 && (
-                    <p className="text-sm">
-                      <span className="font-medium">{exceededBudgets}</span> categoria(s) excederam o orçamento
-                    </p>
-                  )}
-                  {warningBudgets > 0 && (
-                    <p className="text-sm">
-                      <span className="font-medium">{warningBudgets}</span> categoria(s) estão próximas do limite (&gt;80%)
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {isLoading ? (
+              Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-32 w-full" />
+              ))
+            ) : budgets.length === 0 ? (
+              <Card className="md:col-span-2 lg:col-span-3">
+                <CardContent className="py-10 text-center text-muted-foreground">
+                  Nenhum orçamento cadastrado para este mês.
+                </CardContent>
+              </Card>
+            ) : (
+              budgets.map((budget) => {
+                const status = getBudgetStatus(budget);
+                const percentage = (budget.spent / budget.limit) * 100;
 
-          <div className="grid gap-6 md:grid-cols-2">
-            {budgets.map((budget) => {
-              const status = getBudgetStatus(budget);
-              const percentage = Math.min((budget.spent / budget.limit) * 100, 100);
-              
-              return (
-                <Card key={budget.id} className="transition-all hover:shadow-card">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-lg font-semibold">{budget.category}</CardTitle>
-                    <Badge variant={status.color as any} className="flex items-center space-x-1">
-                      {getStatusIcon(status.status)}
-                      <span>{status.status === 'exceeded' ? 'Excedido' : status.status === 'warning' ? 'Atenção' : 'OK'}</span>
-                    </Badge>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Gasto</p>
-                        <p className="text-xl font-bold">{formatCurrency(budget.spent)}</p>
+                return (
+                  <Card key={budget.id} className="relative overflow-hidden">
+                    <CardHeader className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-lg font-semibold">{budget.category}</CardTitle>
+                          <p className="text-sm text-muted-foreground">Meta: {formatCurrency(budget.limit)}</p>
+                        </div>
+                        <Badge variant={status.color} className="flex items-center space-x-1">
+                          {getStatusIcon(status.status)}
+                          <span className="capitalize">
+                            {status.status === 'good' ? 'No controle' : status.status === 'warning' ? 'Atenção' : 'Estourado'}
+                          </span>
+                        </Badge>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Limite</p>
-                        <p className="text-xl font-bold">{formatCurrency(budget.limit)}</p>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>Gasto</span>
+                          <span>{formatCurrency(budget.spent)}</span>
+                        </div>
+                        <Progress value={Math.min(percentage, 100)} className="h-2" />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{percentage.toFixed(1)}% do limite</span>
+                          <span>Restante: {formatCurrency(budget.limit - budget.spent)}</span>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Progresso</span>
-                        <span className={percentage > 100 ? 'text-destructive font-medium' : ''}>
-                          {percentage.toFixed(1)}%
-                        </span>
-                      </div>
-                      <Progress 
-                        value={percentage} 
-                        className={`h-3 ${percentage >= 100 ? 'bg-destructive/20' : percentage >= 80 ? 'bg-warning/20' : ''}`}
-                      />
-                    </div>
-
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Restante:</span>
-                      <span className={`font-medium ${budget.limit - budget.spent >= 0 ? 'text-financial-gain' : 'text-financial-loss'}`}>
-                        {formatCurrency(budget.limit - budget.spent)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </div>
         </main>
       </div>

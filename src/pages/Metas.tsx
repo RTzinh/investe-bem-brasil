@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Target, Calendar, DollarSign, TrendingUp } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Navigation } from "@/components/layout/navigation";
@@ -25,67 +26,31 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, parseFormattedCurrency } from "@/lib/formatters";
-
-interface Goal {
-  id: string;
-  name: string;
-  description?: string;
-  targetAmount: number;
-  currentAmount: number;
-  deadline: Date;
-  priority: 'low' | 'medium' | 'high';
-  category: string;
-  monthlyContribution: number;
-}
+import { api, Goal } from "@/lib/api";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Metas() {
   const { toast } = useToast();
-  const [goals, setGoals] = useState<Goal[]>([
-    {
-      id: "1",
-      name: "Reserva de Emergência",
-      description: "6 meses de despesas essenciais",
-      targetAmount: 24000,
-      currentAmount: 18000,
-      deadline: new Date("2024-12-31"),
-      priority: 'high',
-      category: "Emergência",
-      monthlyContribution: 1000,
+  const queryClient = useQueryClient();
+
+  const { data: goals = [], isLoading } = useQuery({
+    queryKey: ["goals"],
+    queryFn: api.getGoals,
+  });
+
+  const createGoalMutation = useMutation({
+    mutationFn: api.createGoal,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
     },
-    {
-      id: "2",
-      name: "Viagem para Europa",
-      description: "Férias de 15 dias na Europa",
-      targetAmount: 15000,
-      currentAmount: 4500,
-      deadline: new Date("2024-07-01"),
-      priority: 'medium',
-      category: "Lazer",
-      monthlyContribution: 1750,
+  });
+
+  const contributeMutation = useMutation({
+    mutationFn: ({ id, amount }: { id: string; amount: number }) => api.contributeGoal(id, amount),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
     },
-    {
-      id: "3",
-      name: "Notebook Novo",
-      description: "MacBook Pro para trabalho",
-      targetAmount: 8000,
-      currentAmount: 2400,
-      deadline: new Date("2024-05-01"),
-      priority: 'medium',
-      category: "Equipamentos",
-      monthlyContribution: 800,
-    },
-    {
-      id: "4",
-      name: "Casa Própria",
-      description: "Entrada para financiamento imobiliário",
-      targetAmount: 80000,
-      currentAmount: 12000,
-      deadline: new Date("2026-12-31"),
-      priority: 'high',
-      category: "Imóvel",
-      monthlyContribution: 2000,
-    },
-  ]);
+  });
 
   const [newGoal, setNewGoal] = useState({
     name: "",
@@ -134,12 +99,13 @@ export default function Metas() {
 
   const isGoalOnTrack = (goal: Goal) => {
     const today = new Date();
-    const monthsRemaining = (goal.deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30);
+    const deadline = new Date(goal.deadline);
+    const monthsRemaining = (deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30);
     const monthsNeeded = calculateMonthsToGoal(goal);
     return monthsNeeded <= monthsRemaining;
   };
 
-  const handleAddGoal = () => {
+  const handleAddGoal = async () => {
     if (!newGoal.name || !newGoal.targetAmount || !newGoal.deadline) {
       toast({
         title: "Erro",
@@ -149,19 +115,31 @@ export default function Metas() {
       return;
     }
 
-    const goal: Goal = {
-      id: Date.now().toString(),
-      name: newGoal.name,
-      description: newGoal.description,
-      targetAmount: parseFormattedCurrency(newGoal.targetAmount),
-      currentAmount: 0,
-      deadline: new Date(newGoal.deadline),
-      priority: newGoal.priority,
-      category: newGoal.category,
-      monthlyContribution: parseFormattedCurrency(newGoal.monthlyContribution),
-    };
+    try {
+      await createGoalMutation.mutateAsync({
+        name: newGoal.name,
+        description: newGoal.description,
+        targetAmount: parseFormattedCurrency(newGoal.targetAmount),
+        deadline: newGoal.deadline,
+        priority: newGoal.priority,
+        category: newGoal.category || 'Outros',
+        monthlyContribution: parseFormattedCurrency(newGoal.monthlyContribution) || 0,
+      });
 
-    setGoals(prev => [goal, ...prev]);
+      toast({
+        title: "Meta Criada",
+        description: `Meta "${newGoal.name}" foi criada com sucesso.`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível criar a meta.';
+      toast({
+        title: "Erro",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setNewGoal({
       name: "",
       description: "",
@@ -171,24 +149,23 @@ export default function Metas() {
       category: "",
       monthlyContribution: "",
     });
-
-    toast({
-      title: "Meta Criada",
-      description: `Meta "${goal.name}" foi criada com sucesso.`,
-    });
   };
 
-  const handleContribute = (goalId: string, amount: number) => {
-    setGoals(prev => prev.map(goal => 
-      goal.id === goalId 
-        ? { ...goal, currentAmount: goal.currentAmount + amount }
-        : goal
-    ));
-
-    toast({
-      title: "Contribuição Adicionada",
-      description: `${formatCurrency(amount)} foram adicionados à meta.`,
-    });
+  const handleContribute = async (goalId: string, amount: number) => {
+    try {
+      await contributeMutation.mutateAsync({ id: goalId, amount });
+      toast({
+        title: "Contribuição Adicionada",
+        description: `${formatCurrency(amount)} foram adicionados à meta.`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível registrar a contribuição.';
+      toast({
+        title: "Erro",
+        description: message,
+        variant: "destructive",
+      });
+    }
   };
 
   const totalTargetAmount = goals.reduce((acc, g) => acc + g.targetAmount, 0);
@@ -204,8 +181,8 @@ export default function Metas() {
         <main className="flex-1 ml-64 p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Metas Financeiras</h1>
-              <p className="text-muted-foreground">Defina e acompanhe seus objetivos</p>
+              <h1 className="text-3xl font-bold text-foreground">Metas</h1>
+              <p className="text-muted-foreground">Planeje e acompanhe seus objetivos financeiros</p>
             </div>
             <Dialog>
               <DialogTrigger asChild>
@@ -220,7 +197,7 @@ export default function Metas() {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="name">Nome da Meta</Label>
+                    <Label htmlFor="name">Nome</Label>
                     <Input
                       id="name"
                       value={newGoal.name}
@@ -229,17 +206,17 @@ export default function Metas() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="description">Descrição (opcional)</Label>
+                    <Label htmlFor="description">Descrição</Label>
                     <Textarea
                       id="description"
                       value={newGoal.description}
                       onChange={(e) => setNewGoal(prev => ({...prev, description: e.target.value}))}
-                      placeholder="Descreva sua meta..."
+                      placeholder="Descreva sua meta"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="targetAmount">Valor Alvo (R$)</Label>
+                      <Label htmlFor="targetAmount">Valor Alvo</Label>
                       <Input
                         id="targetAmount"
                         value={newGoal.targetAmount}
@@ -248,23 +225,14 @@ export default function Metas() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="monthlyContribution">Contribuição Mensal (R$)</Label>
+                      <Label htmlFor="deadline">Prazo</Label>
                       <Input
-                        id="monthlyContribution"
-                        value={newGoal.monthlyContribution}
-                        onChange={(e) => setNewGoal(prev => ({...prev, monthlyContribution: e.target.value}))}
-                        placeholder="500,00"
+                        id="deadline"
+                        type="date"
+                        value={newGoal.deadline}
+                        onChange={(e) => setNewGoal(prev => ({...prev, deadline: e.target.value}))}
                       />
                     </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="deadline">Data Limite</Label>
-                    <Input
-                      id="deadline"
-                      type="date"
-                      value={newGoal.deadline}
-                      onChange={(e) => setNewGoal(prev => ({...prev, deadline: e.target.value}))}
-                    />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -274,9 +242,9 @@ export default function Metas() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="low">Baixa</SelectItem>
-                          <SelectItem value="medium">Média</SelectItem>
                           <SelectItem value="high">Alta</SelectItem>
+                          <SelectItem value="medium">Média</SelectItem>
+                          <SelectItem value="low">Baixa</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -284,7 +252,7 @@ export default function Metas() {
                       <Label htmlFor="category">Categoria</Label>
                       <Select value={newGoal.category} onValueChange={(value) => setNewGoal(prev => ({...prev, category: value}))}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
+                          <SelectValue placeholder="Selecione uma categoria" />
                         </SelectTrigger>
                         <SelectContent>
                           {categories.map(cat => (
@@ -293,6 +261,15 @@ export default function Metas() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="monthlyContribution">Contribuição Mensal</Label>
+                    <Input
+                      id="monthlyContribution"
+                      value={newGoal.monthlyContribution}
+                      onChange={(e) => setNewGoal(prev => ({...prev, monthlyContribution: e.target.value}))}
+                      placeholder="500,00"
+                    />
                   </div>
                   <Button onClick={handleAddGoal} className="w-full">
                     Criar Meta
@@ -305,7 +282,7 @@ export default function Metas() {
           <div className="grid gap-6 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total das Metas</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Valor Alvo Total</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">{formatCurrency(totalTargetAmount)}</p>
@@ -313,7 +290,7 @@ export default function Metas() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Poupado</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Valor Já Economizado</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-financial-gain">{formatCurrency(totalCurrentAmount)}</p>
@@ -329,102 +306,98 @@ export default function Metas() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">No Cronograma</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">No Caminho Certo</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-financial-gain">{onTrackGoals}</p>
+                <p className="text-2xl font-bold text-secondary">{onTrackGoals}</p>
               </CardContent>
             </Card>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
-            {goals.map((goal) => {
-              const percentage = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
-              const monthsToGoal = calculateMonthsToGoal(goal);
-              const onTrack = isGoalOnTrack(goal);
-              
-              return (
-                <Card key={goal.id} className="transition-all hover:shadow-card">
-                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                    <div className="space-y-2">
-                      <CardTitle className="text-lg font-semibold">{goal.name}</CardTitle>
+            {isLoading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-64 w-full" />
+              ))
+            ) : goals.length === 0 ? (
+              <Card className="md:col-span-2">
+                <CardContent className="py-10 text-center text-muted-foreground">
+                  Nenhuma meta cadastrada ainda.
+                </CardContent>
+              </Card>
+            ) : (
+              goals.map((goal) => {
+                const progress = (goal.currentAmount / goal.targetAmount) * 100;
+                const monthsToGoal = calculateMonthsToGoal(goal);
+                const onTrack = isGoalOnTrack(goal);
+
+                return (
+                  <Card key={goal.id} className="border">
+                    <CardHeader className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-xl font-semibold flex items-center space-x-2">
+                            <Target className="h-5 w-5 text-primary" />
+                            <span>{goal.name}</span>
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground">Meta: {formatCurrency(goal.targetAmount)}</p>
+                        </div>
+                        <Badge variant={getPriorityColor(goal.priority)}>
+                          Prioridade {getPriorityLabel(goal.priority)}
+                        </Badge>
+                      </div>
                       {goal.description && (
                         <p className="text-sm text-muted-foreground">{goal.description}</p>
                       )}
-                    </div>
-                    <div className="flex flex-col items-end space-y-2">
-                      <Badge variant={getPriorityColor(goal.priority) as any}>
-                        {getPriorityLabel(goal.priority)}
-                      </Badge>
-                      {percentage >= 100 && (
-                        <Badge variant="default" className="bg-financial-gain">
-                          Concluída
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Atual</p>
-                        <p className="text-xl font-bold">{formatCurrency(goal.currentAmount)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Meta</p>
-                        <p className="text-xl font-bold">{formatCurrency(goal.targetAmount)}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Progresso</span>
-                        <span className="font-medium">{percentage.toFixed(1)}%</span>
-                      </div>
-                      <Progress value={percentage} className="h-3" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-muted-foreground">Prazo</p>
-                          <p className="font-medium">{formatDate(goal.deadline)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-muted-foreground">Mensal</p>
-                          <p className="font-medium">{formatCurrency(goal.monthlyContribution)}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {percentage < 100 && (
-                      <div className="pt-2 border-t space-y-2">
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            {monthsToGoal === Infinity ? 'Defina contribuição mensal' : `${monthsToGoal} meses restantes`}
-                          </span>
-                          <span className={`font-medium ${onTrack ? 'text-financial-gain' : 'text-warning'}`}>
-                            {onTrack ? 'No cronograma' : 'Atraso previsto'}
-                          </span>
+                          <span>Progresso</span>
+                          <span>{progress.toFixed(1)}%</span>
                         </div>
-                        <div className="flex space-x-2">
-                          <Input placeholder="R$ 100,00" className="text-sm" />
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleContribute(goal.id, 100)}
-                          >
-                            Contribuir
-                          </Button>
+                        <Progress value={Math.min(progress, 100)} className="h-2" />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{formatCurrency(goal.currentAmount)} economizados</span>
+                          <span>Restam {formatCurrency(goal.targetAmount - goal.currentAmount)}</span>
                         </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="rounded-lg border p-3">
+                          <p className="text-xs text-muted-foreground">Prazo</p>
+                          <p className="font-semibold">{formatDate(goal.deadline)}</p>
+                        </div>
+                        <div className="rounded-lg border p-3">
+                          <p className="text-xs text-muted-foreground">Contribuição Mensal</p>
+                          <p className="font-semibold text-primary">{formatCurrency(goal.monthlyContribution)}</p>
+                        </div>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-muted/30">
+                        <p className="text-xs text-muted-foreground">Tempo estimado</p>
+                        <p className="font-semibold">{Number.isFinite(monthsToGoal) ? `${monthsToGoal} meses` : 'Defina uma contribuição mensal'}</p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 text-sm">
+                          <span>Status:</span>
+                          <Badge variant={onTrack ? 'secondary' : 'outline'}>
+                            {onTrack ? 'No ritmo certo' : 'Requer atenção'}
+                          </Badge>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleContribute(goal.id, goal.monthlyContribution || 0)}
+                          disabled={goal.monthlyContribution <= 0 || contributeMutation.isPending}
+                        >
+                          <DollarSign className="h-4 w-4 mr-1" />
+                          Contribuir {formatCurrency(goal.monthlyContribution || 0)}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </div>
         </main>
       </div>

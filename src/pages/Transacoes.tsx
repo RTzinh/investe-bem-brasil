@@ -22,43 +22,16 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency, formatDate, parseFormattedCurrency } from "@/lib/formatters";
+import { formatCurrency, parseFormattedCurrency } from "@/lib/formatters";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
-
-interface Transaction {
-  id: string;
-  description: string;
-  amount: number;
-  type: 'income' | 'expense';
-  category: string;
-  date: Date;
-  account: string;
-  tags?: string[];
-}
+import { useCreateTransaction, useImportTransactions, useTransactions } from "@/hooks/use-transactions";
 
 export default function Transacoes() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: "1",
-      description: "Salário - Empresa XYZ",
-      amount: 8500.00,
-      type: "income",
-      category: "Salário",
-      date: new Date("2024-01-05"),
-      account: "Conta Corrente",
-    },
-    {
-      id: "2",
-      description: "Supermercado Extra",
-      amount: -245.80,
-      type: "expense",
-      category: "Alimentação > Mercado",
-      date: new Date("2024-01-04"),
-      account: "Cartão de Crédito",
-    },
-  ]);
+  const { data: transactions = [], isLoading } = useTransactions();
+  const createTransaction = useCreateTransaction();
+  const importTransactions = useImportTransactions();
 
   const [newTransaction, setNewTransaction] = useState({
     description: "",
@@ -88,13 +61,13 @@ export default function Transacoes() {
 
   const accounts = [
     "Conta Corrente",
-    "Poupança", 
+    "Poupança",
     "Cartão de Crédito",
     "Carteira",
     "Corretora",
   ];
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -107,41 +80,23 @@ export default function Transacoes() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const csv = e.target?.result as string;
-      const lines = csv.split('\n');
-      const headers = lines[0].split(',');
-      
-      const importedTransactions: Transaction[] = [];
-      
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',');
-        if (values.length >= 4) {
-          const transaction: Transaction = {
-            id: `imported_${Date.now()}_${i}`,
-            description: values[0]?.trim() || "Transação Importada",
-            amount: parseFloat(values[1]?.replace(/[R$\s.]/g, '').replace(',', '.')) || 0,
-            type: parseFloat(values[1]?.replace(/[R$\s.]/g, '').replace(',', '.')) > 0 ? 'income' : 'expense',
-            category: values[2]?.trim() || "Sem Categoria",
-            date: new Date(values[3]?.trim() || new Date()),
-            account: values[4]?.trim() || "Conta Importada",
-          };
-          importedTransactions.push(transaction);
-        }
-      }
-
-      setTransactions(prev => [...importedTransactions, ...prev]);
+    try {
+      const result = await importTransactions.mutateAsync(file);
       toast({
         title: "Importação Concluída",
-        description: `${importedTransactions.length} transações foram importadas com sucesso.`,
+        description: `${result.imported} transações foram importadas com sucesso.`,
       });
-    };
-
-    reader.readAsText(file);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível importar o arquivo.';
+      toast({
+        title: "Erro ao importar",
+        description: message,
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleAddTransaction = () => {
+  const handleAddTransaction = async () => {
     if (!newTransaction.description || !newTransaction.amount) {
       toast({
         title: "Erro",
@@ -152,17 +107,31 @@ export default function Transacoes() {
     }
 
     const amount = parseFormattedCurrency(newTransaction.amount);
-    const transaction: Transaction = {
-      id: Date.now().toString(),
-      description: newTransaction.description,
-      amount: newTransaction.type === 'expense' ? -Math.abs(amount) : Math.abs(amount),
-      type: newTransaction.type,
-      category: newTransaction.category,
-      date: new Date(newTransaction.date),
-      account: newTransaction.account,
-    };
+    try {
+      await createTransaction.mutateAsync({
+        description: newTransaction.description,
+        amount: Math.abs(amount),
+        type: newTransaction.type,
+        category: newTransaction.category || 'Sem Categoria',
+        date: newTransaction.date,
+        account: newTransaction.account || 'Conta Corrente',
+        tags: [],
+      });
 
-    setTransactions(prev => [transaction, ...prev]);
+      toast({
+        title: "Transação Adicionada",
+        description: "Nova transação foi registrada com sucesso.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível adicionar a transação.';
+      toast({
+        title: "Erro",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setNewTransaction({
       description: "",
       amount: "",
@@ -171,12 +140,15 @@ export default function Transacoes() {
       account: "",
       date: new Date().toISOString().split('T')[0],
     });
-
-    toast({
-      title: "Transação Adicionada",
-      description: "Nova transação foi registrada com sucesso.",
-    });
   };
+
+  const incomeTotal = transactions
+    .filter(t => t.type === 'income')
+    .reduce((acc, t) => acc + Math.abs(t.amount), 0);
+  const expenseTotal = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((acc, t) => acc + Math.abs(t.amount), 0);
+  const balance = incomeTotal - expenseTotal;
 
   return (
     <div className="min-h-screen bg-background">
@@ -299,7 +271,7 @@ export default function Transacoes() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-financial-gain">
-                  {formatCurrency(transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0))}
+                  {formatCurrency(incomeTotal)}
                 </p>
               </CardContent>
             </Card>
@@ -309,7 +281,7 @@ export default function Transacoes() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-financial-loss">
-                  {formatCurrency(Math.abs(transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0)))}
+                  {formatCurrency(expenseTotal)}
                 </p>
               </CardContent>
             </Card>
@@ -319,7 +291,7 @@ export default function Transacoes() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(transactions.reduce((acc, t) => acc + t.amount, 0))}
+                  {formatCurrency(balance)}
                 </p>
               </CardContent>
             </Card>
@@ -352,7 +324,7 @@ export default function Transacoes() {
               </div>
             </CardHeader>
             <CardContent>
-              <RecentTransactions />
+              <RecentTransactions transactions={transactions} isLoading={isLoading} limit={10} />
             </CardContent>
           </Card>
         </main>
