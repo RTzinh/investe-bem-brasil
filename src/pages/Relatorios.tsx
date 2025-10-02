@@ -1,260 +1,87 @@
-import { useState } from "react";
-import { Calendar, Download, Filter, TrendingUp, TrendingDown } from "lucide-react";
-import { Header } from "@/components/layout/header";
-import { Navigation } from "@/components/layout/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Calendar, Download } from 'lucide-react';
+import { Header } from '@/components/layout/header';
+import { Navigation } from '@/components/layout/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatCurrency } from '@/lib/formatters';
+import { api, CashflowPoint, CategoryBreakdown } from '@/lib/api';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  BarChart,
+  Bar,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 
-interface ReportData {
-  month: string;
-  income: number;
-  expenses: number;
-  balance: number;
-  investments: number;
-}
+const PERIOD_OPTIONS = [
+  { value: '3m', label: '�ltimos 3 meses' },
+  { value: '6m', label: '�ltimos 6 meses' },
+  { value: '12m', label: '�ltimos 12 meses' },
+];
 
-interface CategoryData {
-  category: string;
-  amount: number;
-  percentage: number;
-  budget?: number;
-}
+const COLORS = ['#2563eb', '#f97316', '#22c55e', '#a855f7', '#ec4899', '#0ea5e9'];
 
 export default function Relatorios() {
-  const [selectedPeriod, setSelectedPeriod] = useState("6m");
-  const [selectedReport, setSelectedReport] = useState("fluxo");
+  const [period, setPeriod] = useState('6m');
+  const [reportType, setReportType] = useState<'fluxo' | 'categorias'>('fluxo');
 
-  // Mock data
-  const cashFlowData: ReportData[] = [
-    { month: "2023-08", income: 8500, expenses: 6200, balance: 2300, investments: 1000 },
-    { month: "2023-09", income: 8500, expenses: 5800, balance: 2700, investments: 1200 },
-    { month: "2023-10", income: 9200, expenses: 6100, balance: 3100, investments: 1500 },
-    { month: "2023-11", income: 8500, expenses: 6800, balance: 1700, investments: 800 },
-    { month: "2023-12", income: 10500, expenses: 7200, balance: 3300, investments: 2000 },
-    { month: "2024-01", income: 8500, expenses: 6200, balance: 2300, investments: 1000 },
-  ];
+  const cashflowQuery = useQuery({
+    queryKey: ['reports', 'cashflow', period],
+    queryFn: () => api.reports.cashflow(period),
+  });
 
-  const categoryData: CategoryData[] = [
-    { category: "Alimentação", amount: 1245.80, percentage: 28.5, budget: 1000 },
-    { category: "Moradia", amount: 1800.00, percentage: 41.2, budget: 1800 },
-    { category: "Transporte", amount: 380.45, percentage: 8.7, budget: 500 },
-    { category: "Lazer", amount: 425.30, percentage: 9.7, budget: 300 },
-    { category: "Saúde", amount: 280.50, percentage: 6.4, budget: 400 },
-    { category: "Educação", amount: 245.00, percentage: 5.6, budget: 300 },
-  ];
+  const categoryQuery = useQuery({
+    queryKey: ['reports', 'categories', period],
+    queryFn: () => api.reports.categories(period),
+  });
 
-  const totalExpenses = categoryData.reduce((acc, cat) => acc + cat.amount, 0);
+  const overviewQuery = useQuery({
+    queryKey: ['reports', 'overview', period],
+    queryFn: () => api.reports.overview(period),
+  });
 
-  const exportReport = (format: 'csv' | 'pdf') => {
-    // Mock export functionality
-    alert(`Exportando relatório em formato ${format.toUpperCase()}`);
+  const cashflow = cashflowQuery.data?.data ?? [];
+  const categories = categoryQuery.data?.data ?? [];
+  const overview = overviewQuery.data ?? { income: 0, expenses: 0, balance: 0 };
+
+  const categorySummary = useMemo(() => {
+    const total = categories.reduce((acc, item) => acc + item.expenses, 0);
+    return {
+      total,
+      top: categories.slice(0, 3),
+    };
+  }, [categories]);
+
+  const exportCsv = () => {
+    const header = 'Tipo,Valor\n';
+    const rows = [
+      ['Receitas', overview.income],
+      ['Despesas', overview.expenses],
+      ['Saldo', overview.balance],
+    ];
+    const blob = new Blob([header + rows.map((row) => `${row[0]},${row[1]}`).join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `relatorio-${reportType}-${period}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
-
-  const renderCashFlowReport = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Fluxo de Caixa Mensal</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {cashFlowData.map((data, index) => {
-              const monthName = new Date(data.month + "-01").toLocaleDateString('pt-BR', { 
-                month: 'long', 
-                year: 'numeric' 
-              });
-              
-              return (
-                <div key={data.month} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
-                  <div className="flex-1">
-                    <h4 className="font-medium capitalize">{monthName}</h4>
-                    <div className="grid grid-cols-4 gap-4 mt-2 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Receitas</p>
-                        <p className="font-semibold text-financial-gain">{formatCurrency(data.income)}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Despesas</p>
-                        <p className="font-semibold text-financial-loss">{formatCurrency(data.expenses)}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Saldo</p>
-                        <p className={`font-semibold ${data.balance >= 0 ? 'text-financial-gain' : 'text-financial-loss'}`}>
-                          {formatCurrency(data.balance)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Investimentos</p>
-                        <p className="font-semibold text-primary">{formatCurrency(data.investments)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center ml-4">
-                    {data.balance >= 0 ? (
-                      <TrendingUp className="h-5 w-5 text-financial-gain" />
-                    ) : (
-                      <TrendingDown className="h-5 w-5 text-financial-loss" />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Resumo do Período</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total de Receitas:</span>
-                <span className="font-semibold text-financial-gain">
-                  {formatCurrency(cashFlowData.reduce((acc, d) => acc + d.income, 0))}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total de Despesas:</span>
-                <span className="font-semibold text-financial-loss">
-                  {formatCurrency(cashFlowData.reduce((acc, d) => acc + d.expenses, 0))}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Saldo Acumulado:</span>
-                <span className="font-semibold text-primary">
-                  {formatCurrency(cashFlowData.reduce((acc, d) => acc + d.balance, 0))}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Investido:</span>
-                <span className="font-semibold text-primary">
-                  {formatCurrency(cashFlowData.reduce((acc, d) => acc + d.investments, 0))}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Evolução Mensal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Melhor mês (saldo)</p>
-                <p className="text-lg font-semibold text-financial-gain">
-                  {formatCurrency(Math.max(...cashFlowData.map(d => d.balance)))}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Pior mês (saldo)</p>
-                <p className="text-lg font-semibold text-financial-loss">
-                  {formatCurrency(Math.min(...cashFlowData.map(d => d.balance)))}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Média de gastos</p>
-                <p className="text-lg font-semibold">
-                  {formatCurrency(cashFlowData.reduce((acc, d) => acc + d.expenses, 0) / cashFlowData.length)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-
-  const renderCategoryReport = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Gastos por Categoria</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {categoryData.map((category) => (
-              <div key={category.category} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-medium">{category.category}</span>
-                    {category.budget && category.amount > category.budget && (
-                      <span className="text-xs text-destructive">Acima do orçamento</span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(category.amount)}</p>
-                    <p className="text-xs text-muted-foreground">{category.percentage.toFixed(1)}%</p>
-                  </div>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full" 
-                    style={{ width: `${category.percentage}%` }}
-                  />
-                </div>
-                {category.budget && (
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Orçamento: {formatCurrency(category.budget)}</span>
-                    <span>
-                      {category.amount > category.budget ? 'Excesso: ' : 'Restante: '}
-                      {formatCurrency(Math.abs(category.budget - category.amount))}
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Maior Gasto</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{categoryData[0].category}</p>
-            <p className="text-sm text-muted-foreground">{formatCurrency(categoryData[0].amount)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Total de Categorias</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{categoryData.length}</p>
-            <p className="text-sm text-muted-foreground">Com movimentação</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Concentração</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {(categoryData.slice(0, 3).reduce((acc, cat) => acc + cat.percentage, 0)).toFixed(0)}%
-            </p>
-            <p className="text-sm text-muted-foreground">Top 3 categorias</p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -262,93 +89,156 @@ export default function Relatorios() {
       <div className="flex">
         <Navigation />
         <main className="flex-1 ml-64 p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Relatórios</h1>
-              <p className="text-muted-foreground">Análise detalhada das suas finanças</p>
+              <h1 className="text-3xl font-bold">Relat�rios</h1>
+              <p className="text-muted-foreground">Insights e tend�ncias das suas finan�as pessoais.</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" onClick={() => exportReport('csv')}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={exportCsv}>
                 <Download className="mr-2 h-4 w-4" />
-                CSV
-              </Button>
-              <Button variant="outline" onClick={() => exportReport('pdf')}>
-                <Download className="mr-2 h-4 w-4" />
-                PDF
+                Exportar CSV
               </Button>
             </div>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Filtros do Relatório</CardTitle>
+              <CardTitle>Filtros</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <Label htmlFor="report-type">Tipo de Relatório</Label>
-                  <Select value={selectedReport} onValueChange={setSelectedReport}>
+                  <Label>Tipo de relat�rio</Label>
+                  <Select value={reportType} onValueChange={(value: 'fluxo' | 'categorias') => setReportType(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fluxo">Fluxo de Caixa</SelectItem>
-                      <SelectItem value="categorias">Por Categorias</SelectItem>
-                      <SelectItem value="investimentos">Investimentos</SelectItem>
-                      <SelectItem value="metas">Metas</SelectItem>
+                      <SelectItem value="fluxo">Fluxo de caixa</SelectItem>
+                      <SelectItem value="categorias">Gastos por categoria</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="period">Período</Label>
-                  <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                  <Label>Per�odo</Label>
+                  <Select value={period} onValueChange={setPeriod}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1m">Último mês</SelectItem>
-                      <SelectItem value="3m">Últimos 3 meses</SelectItem>
-                      <SelectItem value="6m">Últimos 6 meses</SelectItem>
-                      <SelectItem value="1y">Último ano</SelectItem>
-                      <SelectItem value="custom">Personalizado</SelectItem>
+                      {PERIOD_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label htmlFor="start-date">Data Início</Label>
-                  <Input type="date" id="start-date" />
-                </div>
-                <div>
-                  <Label htmlFor="end-date">Data Fim</Label>
-                  <Input type="date" id="end-date" />
+                <div className="flex items-center gap-2 rounded-md border p-3 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  <span>Atualizado em {new Date().toLocaleDateString('pt-BR')}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {selectedReport === "fluxo" && renderCashFlowReport()}
-          {selectedReport === "categorias" && renderCategoryReport()}
-          
-          {selectedReport === "investimentos" && (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <h3 className="text-lg font-semibold mb-2">Relatório de Investimentos</h3>
-                <p className="text-muted-foreground">
-                  Funcionalidade em desenvolvimento. Em breve você poderá analisar a performance da sua carteira.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Resumo do per�odo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-lg border p-4">
+                  <p className="text-sm text-muted-foreground">Receitas</p>
+                  {overviewQuery.isLoading ? <Skeleton className="mt-2 h-8 w-24" /> : <p className="text-2xl font-semibold text-financial-gain">{formatCurrency(overview.income)}</p>}
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-sm text-muted-foreground">Despesas</p>
+                  {overviewQuery.isLoading ? <Skeleton className="mt-2 h-8 w-24" /> : <p className="text-2xl font-semibold text-financial-loss">{formatCurrency(overview.expenses)}</p>}
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-sm text-muted-foreground">Saldo</p>
+                  {overviewQuery.isLoading ? <Skeleton className="mt-2 h-8 w-24" /> : <p className={`text-2xl font-semibold ${overview.balance >= 0 ? 'text-financial-gain' : 'text-financial-loss'}`}>{formatCurrency(overview.balance)}</p>}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          {selectedReport === "metas" && (
+          {reportType === 'fluxo' ? (
             <Card>
-              <CardContent className="p-8 text-center">
-                <h3 className="text-lg font-semibold mb-2">Relatório de Metas</h3>
-                <p className="text-muted-foreground">
-                  Funcionalidade em desenvolvimento. Em breve você poderá acompanhar o progresso das suas metas.
-                </p>
+              <CardHeader>
+                <CardTitle>Evolu��o do fluxo de caixa</CardTitle>
+              </CardHeader>
+              <CardContent className="h-80">
+                {cashflowQuery.isLoading ? (
+                  <Skeleton className="h-full w-full" />
+                ) : cashflow.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={cashflow}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <Area type="monotone" dataKey="income" stackId="1" stroke="#22c55e" fill="#22c55e55" name="Receitas" />
+                      <Area type="monotone" dataKey="expenses" stackId="1" stroke="#ef4444" fill="#ef444455" name="Despesas" />
+                      <Area type="monotone" dataKey="balance" stroke="#2563eb" fill="#2563eb40" name="Saldo" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    Nenhum dado encontrado para o per�odo selecionado.
+                  </div>
+                )}
               </CardContent>
             </Card>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card className="h-80">
+                <CardHeader>
+                  <CardTitle>Distribui��o de despesas por categoria</CardTitle>
+                </CardHeader>
+                <CardContent className="h-full">
+                  {categoryQuery.isLoading ? (
+                    <Skeleton className="h-full w-full" />
+                  ) : categories.length ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={categories} dataKey="expenses" nameKey="category" innerRadius={50} outerRadius={90}>
+                          {categories.map((entry, index) => (
+                            <Cell key={entry.category} fill={COLORS[index % COLORS.length]} stroke="transparent" />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number, name) => [formatCurrency(value), name as string]} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                      Nenhuma despesa registrada no per�odo.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Maiores categorias</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {categorySummary.top.map((category, index) => (
+                    <div key={category.category} className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <p className="text-sm font-medium">{category.category}</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(category.expenses)}</p>
+                      </div>
+                      <Badge>{category.percentage.toFixed(1)}%</Badge>
+                    </div>
+                  ))}
+                  <div className="rounded-lg border p-3 text-sm text-muted-foreground">
+                    Total gasto: <span className="font-semibold text-foreground">{formatCurrency(categorySummary.total)}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </main>
       </div>

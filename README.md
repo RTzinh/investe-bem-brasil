@@ -1,73 +1,87 @@
-# Welcome to your Lovable project
+﻿# Investe Bem Brasil
 
-## Project info
+Aplicação completa de finanças pessoais com dashboard interativo, controle de transações, orçamentos, metas, investimentos com streaming em tempo real e assistente IA educacional.
 
-**URL**: https://lovable.dev/projects/cb4562c1-527a-4440-a679-a2ccb6d52287
+## Tecnologias principais
 
-## How can I edit this code?
+- Front-end: Vite + React + TypeScript + Tailwind + shadcn/ui + Recharts + React Query
+- Back-end: Express + Socket.IO + SQLite (better-sqlite3)
+- IA: Google Gemini (via `@google/generative-ai`)
 
-There are several ways of editing your application.
+## Pré-requisitos
 
-**Use Lovable**
+- Node.js (>= 18)
+- npm (>= 9)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/cb4562c1-527a-4440-a679-a2ccb6d52287) and start prompting.
+## Configuração
 
-Changes made via Lovable will be committed automatically to this repo.
+1. Instale dependências:
 
-**Use your preferred IDE**
+   ```bash
+   npm install
+   ```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+2. Configure variáveis de ambiente:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+   ```bash
+   cp .env.example .env
+   cp server/.env.example server/.env
+   ```
 
-Follow these steps:
+   Ajuste conforme necessário:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+   - `VITE_API_URL`: URL base da API (padrão `http://localhost:4000/api`)
+   - `VITE_SOCKET_URL`: URL do websocket de investimentos
+   - `GEMINI_API_KEY`: chave da API Gemini para o assistente IA
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3. (Opcional) ajuste porta ou outros parâmetros no `server/.env`.
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Executando o projeto
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Backend
+
+```bash
+npm run server
+```
+
+O servidor Express será iniciado em `http://localhost:4000`, com base SQLite armazenada em `server/data/investebem.db`.
+
+### Frontend
+
+Em outro terminal:
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+A interface Vite ficará disponível em `http://localhost:5173` consumindo a API do backend.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Funcionalidades implementadas
 
-**Use GitHub Codespaces**
+- **Dashboard**: visão geral consolidada (investimentos, transações recentes, alertas sugeridos)
+- **Transações**: listagem com filtros, importação CSV, exportação, criação manual e indicadores automáticos
+- **Orçamentos**: acompanhamento por categoria, alertas (80% e excedido), notas e metas
+- **Metas**: cadastro, acompanhamento de progresso, aportes adicionais e painel de status
+- **Investimentos**: carteira com atualização em tempo real via Socket.IO, distribuição por classe, registro de operações e gráfico de preços
+- **Relatórios**: fluxo de caixa, distribuição de despesas por categoria e exportação CSV
+- **Assistente IA**: chat educacional conectado à API Gemini com histórico de mensagens
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Observações
 
-## What technologies are used for this project?
+- O banco SQLite já vem populado com dados exemplo; pode ser reiniciado removendo `server/data/investebem.db`.
+- Para ambientes de produção configure variáveis de ambiente seguras e rode o backend com um process manager (PM2, Docker, etc.).
+- A chave Gemini deve ser mantida em local seguro; o arquivo `.env` não deve ser commitado.
 
-This project is built with:
+## Scripts úteis
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+| Comando              | Descrição                                       |
+| -------------------- | ----------------------------------------------- |
+| `npm run dev`        | Inicia o frontend Vite                          |
+| `npm run server`     | Inicia o backend Express                        |
+| `npm run server:dev` | Inicia o backend com hot-reload (`tsx --watch`) |
+| `npm run build`      | Build do frontend                              |
+| `npm run preview`    | Preview do build do frontend                   |
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/cb4562c1-527a-4440-a679-a2ccb6d52287) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Made with ❤️ para uma gestão financeira integrada.

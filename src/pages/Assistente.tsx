@@ -1,69 +1,81 @@
-import { useState } from "react";
-import { Send, Brain, AlertTriangle } from "lucide-react";
-import { Header } from "@/components/layout/header";
-import { Navigation } from "@/components/layout/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+﻿import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { Send, Brain, AlertTriangle } from 'lucide-react';
+import { Header } from '@/components/layout/header';
+import { Navigation } from '@/components/layout/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { api, AssistantMessage } from '@/lib/api';
 
-interface Message {
+interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  timestamp: Date;
 }
+
+const QUICK_ACTIONS = [
+  'Explique Tesouro Selic',
+  'Analise meu perfil de risco',
+  'Sugira alocação equilibrada',
+  'Resumo financeiro do mês',
+  'O que são FIIs?',
+  'Como diversificar minha carteira?'
+];
 
 export default function Assistente() {
   const { toast } = useToast();
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      id: "1",
-      role: "assistant",
-      content: "Olá! Sou seu assistente financeiro educacional. Posso ajudar com explicações sobre investimentos, análise do seu perfil de risco e sugestões de alocação. Como posso ajudar hoje?",
-      timestamp: new Date(),
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Olá! Sou seu assistente financeiro educacional. Posso explicar conceitos, ajudar com comparações e trazer cenários simulados. Como posso ajudar hoje?'
     }
   ]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
 
-  const quickActions = [
-    "Explicar Tesouro Selic",
-    "Meu perfil de risco",
-    "Sugestão de alocação",
-    "Resumo financeiro do mês",
-    "O que são FIIs?",
-    "Como diversificar carteira?"
-  ];
+  const sendMutation = useMutation({
+    mutationFn: (history: AssistantMessage[]) => api.assistant.chat(history),
+    onError: (error) => {
+      console.error(error);
+      toast({
+        title: 'Não foi possível responder agora',
+        description: 'Verifique sua conexão e tente novamente.',
+        variant: 'destructive',
+      });
+      setMessages((prev) => prev.filter((message) => message.id !== 'typing'));
+    },
+    onSuccess: (data) => {
+      setMessages((prev) => prev
+        .filter((message) => message.id !== 'typing')
+        .concat({
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: data.reply.trim() || 'Consegui processar sua solicitação, mas não recebi detalhes suficientes. Poderia reformular a pergunta?'
+        }));
+    },
+  });
 
-  const handleSendMessage = () => {
-    if (!input.trim()) return;
+  const handleSend = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
 
-    const userMessage: Message = {
+    const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      role: "user",
-      content: input,
-      timestamp: new Date(),
+      role: 'user',
+      content: trimmed,
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage, { id: 'typing', role: 'assistant', content: 'Digitando…' }]);
+    setInput('');
 
-    // Simular resposta da IA
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "Esta é uma simulação da resposta da IA. Para funcionalidade completa, conecte uma API de IA (OpenAI/Anthropic) via Supabase Edge Functions.",
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+    const payload = [...messages, userMessage]
+      .filter((message) => message.id !== 'typing')
+      .map<AssistantMessage>((message) => ({ role: message.role, content: message.content }));
 
-    setInput("");
-  };
-
-  const handleQuickAction = (action: string) => {
-    setInput(action);
+    sendMutation.mutate(payload);
   };
 
   return (
@@ -72,72 +84,54 @@ export default function Assistente() {
       <div className="flex">
         <Navigation />
         <main className="flex-1 ml-64 p-6">
-          <div className="max-w-4xl mx-auto space-y-6">
+          <div className="mx-auto flex max-w-4xl flex-col space-y-6">
             <div className="text-center space-y-2">
-              <h1 className="text-3xl font-bold text-foreground flex items-center justify-center space-x-2">
+              <h1 className="flex items-center justify-center space-x-2 text-3xl font-bold">
                 <Brain className="h-8 w-8 text-primary" />
                 <span>Assistente IA Financeiro</span>
               </h1>
-              <p className="text-muted-foreground">Educação financeira personalizada e inteligente</p>
-              <Badge variant="outline" className="bg-warning/10 border-warning text-warning">
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Conteúdo Educacional
+              <p className="text-muted-foreground">Conteúdo educacional em linguagem simples para apoiar suas decisões.</p>
+              <Badge variant="outline" className="border-warning bg-warning/10 text-warning">
+                <AlertTriangle className="mr-1 h-3 w-3" /> Conteúdo Educacional (não é recomendação)
               </Badge>
             </div>
 
-            <Card className="border-warning bg-warning/5">
-              <CardContent className="p-4">
-                <p className="text-sm text-center">
-                  <strong>Aviso Legal:</strong> Este assistente fornece informações educacionais e não constitui recomendação de investimento. 
-                  Sempre consulte um profissional credenciado antes de tomar decisões financeiras.
-                </p>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              {quickActions.map((action, index) => (
-                <Button 
-                  key={index}
-                  variant="outline" 
-                  className="h-auto p-4 text-left justify-start"
-                  onClick={() => handleQuickAction(action)}
-                >
+            <div className="grid gap-3 md:grid-cols-3">
+              {QUICK_ACTIONS.map((action) => (
+                <Button key={action} variant="outline" className="h-auto justify-start p-4 text-left" onClick={() => handleSend(action)}>
                   {action}
                 </Button>
               ))}
             </div>
 
-            <Card className="h-96 flex flex-col">
+            <Card className="flex h-[460px] flex-col">
               <CardHeader>
                 <CardTitle>Conversa</CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto space-y-4">
+              <CardContent className="flex-1 space-y-4 overflow-y-auto pr-2">
                 {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-lg p-3 ${
-                        message.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                      }`}
-                    >
-                      <p className="text-sm">{message.content}</p>
+                  <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] rounded-lg p-3 text-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      {message.content}
                     </div>
                   </div>
                 ))}
               </CardContent>
-              <div className="p-4 border-t">
-                <div className="flex space-x-2">
+              <div className="border-t p-4">
+                <div className="flex gap-2">
                   <Input
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={(event) => setInput(event.target.value)}
                     placeholder="Digite sua pergunta..."
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        handleSend(input);
+                      }
+                    }}
+                    disabled={sendMutation.isPending}
                   />
-                  <Button onClick={handleSendMessage}>
+                  <Button onClick={() => handleSend(input)} disabled={sendMutation.isPending}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>

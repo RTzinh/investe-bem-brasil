@@ -1,235 +1,273 @@
-import { useState } from "react";
-import { Plus, TrendingUp, TrendingDown, DollarSign, PieChart, BarChart3 } from "lucide-react";
-import { Header } from "@/components/layout/header";
-import { Navigation } from "@/components/layout/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LineChart as LineChartIcon, PieChart as PieChartIcon, Plus, PauseCircle, PlayCircle } from 'lucide-react';
+import { Header } from '@/components/layout/header';
+import { Navigation } from '@/components/layout/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { formatCurrency, formatPercentage, parseFormattedCurrency } from '@/lib/formatters';
+import { api, InvestmentResponse, TradePayload } from '@/lib/api';
+import { getInvestmentSocket, disconnectSocket } from '@/lib/socket';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { formatCurrency, formatDate, formatPercentage, parseFormattedCurrency } from "@/lib/formatters";
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+  CartesianGrid,
+} from 'recharts';
 
-interface Investment {
-  id: string;
-  symbol: string;
-  name: string;
-  type: 'ACAO' | 'ETF' | 'FII' | 'RF' | 'CRIPTO';
-  quantity: number;
-  avgPrice: number;
-  currentPrice: number;
-  totalValue: number;
-  performance: number;
-  dividends: number;
-  lastUpdate: Date;
-}
-
-interface Trade {
-  id: string;
-  symbol: string;
-  type: 'buy' | 'sell';
-  quantity: number;
+interface PricePoint {
+  time: string;
   price: number;
-  fees: number;
-  date: Date;
 }
+
+const ASSET_TYPES = [
+  { value: 'ACAO', label: 'Acao' },
+  { value: 'ETF', label: 'ETF' },
+  { value: 'FII', label: 'FII' },
+  { value: 'RF', label: 'Renda Fixa' },
+  { value: 'CRIPTO', label: 'Cripto' },
+];
+
+const COLORS = ['#2563eb', '#fb7185', '#f97316', '#22c55e', '#a855f7', '#0ea5e9'];
+
+const INITIAL_FORM = {
+  symbol: '',
+  name: '',
+  type: 'buy' as TradePayload['type'],
+  assetType: 'ACAO',
+  quantity: '',
+  price: '',
+  fees: '',
+};
+
+const formatTimeLabel = (value: string) =>
+  new Date(value).toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  });
 
 export default function Investimentos() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
-  
-  const [investments, setInvestments] = useState<Investment[]>([
-    {
-      id: "1",
-      symbol: "BOVA11",
-      name: "iShares Ibovespa ETF",
-      type: "ETF",
-      quantity: 100,
-      avgPrice: 98.50,
-      currentPrice: 108.20,
-      totalValue: 10820.00,
-      performance: 9.8,
-      dividends: 145.30,
-      lastUpdate: new Date(),
-    },
-    {
-      id: "2",
-      symbol: "PETR4",
-      name: "Petrobras PN",
-      type: "ACAO",
-      quantity: 200,
-      avgPrice: 28.45,
-      currentPrice: 32.10,
-      totalValue: 6420.00,
-      performance: 12.8,
-      dividends: 280.50,
-      lastUpdate: new Date(),
-    },
-    {
-      id: "3",
-      symbol: "MXRF11",
-      name: "Maxi Renda FII",
-      type: "FII",
-      quantity: 300,
-      avgPrice: 9.80,
-      currentPrice: 10.45,
-      totalValue: 3135.00,
-      performance: 6.6,
-      dividends: 189.70,
-      lastUpdate: new Date(),
-    },
-    {
-      id: "4",
-      symbol: "TESOURO_SELIC",
-      name: "Tesouro Selic 2029",
-      type: "RF",
-      quantity: 1,
-      avgPrice: 12000.00,
-      currentPrice: 12624.00,
-      totalValue: 12624.00,
-      performance: 5.2,
-      dividends: 0,
-      lastUpdate: new Date(),
-    },
-  ]);
+  const [tradeForm, setTradeForm] = useState(INITIAL_FORM);
+  const [liveInvestments, setLiveInvestments] = useState<InvestmentResponse[]>([]);
+  const [priceHistory, setPriceHistory] = useState<Record<string, PricePoint[]>>({});
+  const [portfolioHistory, setPortfolioHistory] = useState<PricePoint[]>([]);
+  const [selectedSymbol, setSelectedSymbol] = useState<string | undefined>(undefined);
+  const [isStreaming, setIsStreaming] = useState(true);
 
-  const [newTrade, setNewTrade] = useState({
-    symbol: "",
-    type: "buy" as "buy" | "sell",
-    quantity: "",
-    price: "",
-    fees: "",
+  const investmentsQuery = useQuery({
+    queryKey: ['investments'],
+    queryFn: api.investments.list,
   });
 
-  const [targetAllocation] = useState({
-    rf: 30, // Renda Fixa
-    acoes: 40, // Ações/ETFs
-    fiis: 20, // FIIs
-    cripto: 10, // Cripto
+  const summaryQuery = useQuery({
+    queryKey: ['investments', 'summary'],
+    queryFn: api.investments.summary,
   });
 
-  const assetTypes = [
-    { value: "ACAO", label: "Ação" },
-    { value: "ETF", label: "ETF" },
-    { value: "FII", label: "FII" },
-    { value: "RF", label: "Renda Fixa" },
-    { value: "CRIPTO", label: "Criptomoeda" },
-  ];
-
-  const popularAssets = [
-    "BOVA11", "IVVB11", "SMAL11", "PETR4", "VALE3", "ITUB4", 
-    "MXRF11", "HGLG11", "XPML11", "TESOURO_SELIC", "CDB_CDI"
-  ];
-
-  const totalPortfolioValue = investments.reduce((acc, inv) => acc + inv.totalValue, 0);
-  const totalDividends = investments.reduce((acc, inv) => acc + inv.dividends, 0);
-  const portfolioPerformance = investments.reduce((acc, inv) => acc + (inv.performance * inv.totalValue / totalPortfolioValue), 0);
-
-  const getCurrentAllocation = () => {
-    const rf = investments.filter(i => i.type === 'RF').reduce((acc, i) => acc + i.totalValue, 0);
-    const acoes = investments.filter(i => ['ACAO', 'ETF'].includes(i.type)).reduce((acc, i) => acc + i.totalValue, 0);
-    const fiis = investments.filter(i => i.type === 'FII').reduce((acc, i) => acc + i.totalValue, 0);
-    const cripto = investments.filter(i => i.type === 'CRIPTO').reduce((acc, i) => acc + i.totalValue, 0);
-
-    return {
-      rf: (rf / totalPortfolioValue) * 100,
-      acoes: (acoes / totalPortfolioValue) * 100,
-      fiis: (fiis / totalPortfolioValue) * 100,
-      cripto: (cripto / totalPortfolioValue) * 100,
-    };
+  const investments = investmentsQuery.data?.data ?? [];
+  const summary = summaryQuery.data ?? {
+    totalValue: 0,
+    totalDividends: 0,
+    performance: 0,
+    allocationByType: {},
   };
 
-  const currentAllocation = getCurrentAllocation();
+  const latestInvestmentsRef = useRef<InvestmentResponse[]>(investments);
 
-  const handleAddTrade = () => {
-    if (!newTrade.symbol || !newTrade.quantity || !newTrade.price) {
+  useEffect(() => {
+    latestInvestmentsRef.current = investments;
+  }, [investments]);
+
+  useEffect(() => {
+    if (!selectedSymbol && investments.length) {
+      setSelectedSymbol(investments[0].symbol);
+    }
+  }, [investments, selectedSymbol]);
+
+  useEffect(() => {
+    if (!investments.length) return;
+    const timestamp = new Date().toISOString();
+
+    setPriceHistory((prev) => {
+      const next = { ...prev };
+      investments.forEach((investment) => {
+        if (!(investment.symbol in next) || next[investment.symbol].length === 0) {
+          next[investment.symbol] = [{ time: timestamp, price: investment.current_price }];
+        }
+      });
+      return next;
+    });
+
+    setPortfolioHistory((prev) => {
+      if (prev.length) return prev;
+      const total = investments.reduce((acc, investment) => acc + investment.totalValue, 0);
+      return [{ time: timestamp, price: total }];
+    });
+  }, [investments]);
+
+  useEffect(() => {
+    const socket = getInvestmentSocket();
+
+    const handler = (payload: { data: Record<string, unknown>[]; timestamp: string }) => {
+      if (!isStreaming) {
+        return;
+      }
+
+      const baseInvestments = latestInvestmentsRef.current;
+
+      const normalized: InvestmentResponse[] = payload.data.map((item) => {
+        const symbol = String(item.symbol);
+        const match = baseInvestments.find((investment) => investment.symbol === symbol);
+
+        const quantity = Number(item.quantity ?? match?.quantity ?? 0);
+        const avgPrice = Number(item.avg_price ?? match?.avg_price ?? 0);
+        const currentPrice = Number(item.current_price ?? match?.current_price ?? 0);
+        const totalValue = Number(item.total_value ?? match?.totalValue ?? quantity * currentPrice);
+
+        return {
+          id: match?.id ?? symbol,
+          symbol,
+          name: String(item.name ?? match?.name ?? symbol),
+          type: String(item.type ?? match?.type ?? 'ACAO'),
+          quantity,
+          avg_price: avgPrice,
+          current_price: currentPrice,
+          dividends: match?.dividends ?? 0,
+          target_allocation: match?.target_allocation ?? 0,
+          totalValue,
+          investedValue: match?.investedValue ?? quantity * (avgPrice || match?.avg_price || currentPrice),
+          performance: Number(item.performance ?? match?.performance ?? 0),
+        };
+      });
+
+      latestInvestmentsRef.current = normalized;
+      setLiveInvestments(normalized);
+
+      setPriceHistory((prev) => {
+        const next = { ...prev };
+        normalized.forEach((investment) => {
+          const history = next[investment.symbol] ?? [];
+          const updated = [...history, { time: payload.timestamp, price: investment.current_price }];
+          next[investment.symbol] = updated.slice(-180);
+        });
+        return next;
+      });
+
+      setPortfolioHistory((prev) => {
+        const total = normalized.reduce((acc, investment) => acc + investment.totalValue, 0);
+        return [...prev, { time: payload.timestamp, price: total }].slice(-180);
+      });
+    };
+
+    socket.on('investment:stream', handler);
+
+    return () => {
+      socket.off('investment:stream', handler);
+    };
+  }, [isStreaming]);
+
+  useEffect(() => () => disconnectSocket(), []);
+
+  const displayInvestments = liveInvestments.length && isStreaming ? liveInvestments : investments;
+
+  useEffect(() => {
+    if (displayInvestments.length) {
+      latestInvestmentsRef.current = displayInvestments;
+    }
+  }, [displayInvestments]);
+
+  const allocationData = useMemo(() => {
+    const entries = Object.entries(summary.allocationByType ?? {});
+    return entries.map(([type, value], index) => ({
+      name: type,
+      value,
+      color: COLORS[index % COLORS.length],
+    }));
+  }, [summary.allocationByType]);
+
+  const selectedHistory = selectedSymbol ? priceHistory[selectedSymbol] ?? [] : [];
+
+  const tradeMutation = useMutation({
+    mutationFn: (payload: TradePayload) => api.investments.trade(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investments'] });
+      queryClient.invalidateQueries({ queryKey: ['investments', 'summary'] });
+      setTradeForm(INITIAL_FORM);
+      toast({ title: 'Operacao registrada', description: 'A posicao foi atualizada com sucesso.' });
+    },
+    onError: (error) => {
+      console.error(error);
       toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios.",
-        variant: "destructive",
+        title: 'Erro ao registrar operacao',
+        description: 'Confira os dados informados e tente novamente.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleTrade = () => {
+    if (!tradeForm.symbol || !tradeForm.name || !tradeForm.price || !tradeForm.quantity) {
+      toast({
+        title: 'Preencha os campos obrigatorios',
+        description: 'Simbolo, nome, preco e quantidade sao necessarios.',
+        variant: 'destructive',
       });
       return;
     }
 
-    const quantity = parseInt(newTrade.quantity);
-    const price = parseFormattedCurrency(newTrade.price);
-    const fees = parseFormattedCurrency(newTrade.fees) || 0;
+    const quantity = Number(tradeForm.quantity);
+    const price = parseFormattedCurrency(tradeForm.price);
+    const fees = parseFormattedCurrency(tradeForm.fees);
 
-    // Simular atualização da carteira
-    const existingIndex = investments.findIndex(inv => inv.symbol === newTrade.symbol);
-    
-    if (existingIndex >= 0) {
-      setInvestments(prev => prev.map((inv, index) => {
-        if (index === existingIndex) {
-          const newQuantity = newTrade.type === 'buy' 
-            ? inv.quantity + quantity 
-            : inv.quantity - quantity;
-          
-          const newAvgPrice = newTrade.type === 'buy'
-            ? ((inv.avgPrice * inv.quantity) + (price * quantity)) / newQuantity
-            : inv.avgPrice;
-
-          return {
-            ...inv,
-            quantity: newQuantity,
-            avgPrice: newAvgPrice,
-            totalValue: newQuantity * inv.currentPrice,
-            lastUpdate: new Date(),
-          };
-        }
-        return inv;
-      }));
-    } else if (newTrade.type === 'buy') {
-      // Adicionar novo ativo
-      const newInvestment: Investment = {
-        id: Date.now().toString(),
-        symbol: newTrade.symbol,
-        name: newTrade.symbol,
-        type: "ACAO", // Default, seria obtido de API
-        quantity,
-        avgPrice: price,
-        currentPrice: price,
-        totalValue: quantity * price,
-        performance: 0,
-        dividends: 0,
-        lastUpdate: new Date(),
-      };
-      setInvestments(prev => [newInvestment, ...prev]);
+    if (!Number.isFinite(quantity) || quantity <= 0 || price <= 0) {
+      toast({
+        title: 'Valores invalidos',
+        description: 'Quantidade e preco devem ser maiores que zero.',
+        variant: 'destructive',
+      });
+      return;
     }
 
-    setNewTrade({
-      symbol: "",
-      type: "buy",
-      quantity: "",
-      price: "",
-      fees: "",
+    tradeMutation.mutate({
+      symbol: tradeForm.symbol.toUpperCase(),
+      name: tradeForm.name,
+      type: tradeForm.type,
+      quantity,
+      price,
+      fees,
+      assetType: tradeForm.assetType,
     });
+  };
 
-    toast({
-      title: "Operação Registrada",
-      description: `${newTrade.type === 'buy' ? 'Compra' : 'Venda'} de ${quantity} ${newTrade.symbol} registrada.`,
+  const toggleStreaming = () => {
+    setIsStreaming((prev) => {
+      const next = !prev;
+      if (!next) {
+        toast({ title: 'Streaming pausado', description: 'Os dados permanecem visiveis e podem ser retomados quando quiser.' });
+      } else {
+        toast({ title: 'Streaming retomado', description: 'Cotas em tempo real reativadas.' });
+        queryClient.invalidateQueries({ queryKey: ['investments'] });
+        queryClient.invalidateQueries({ queryKey: ['investments', 'summary'] });
+      }
+      return next;
     });
   };
 
@@ -238,238 +276,304 @@ export default function Investimentos() {
       <Header />
       <div className="flex">
         <Navigation />
-        <main className="flex-1 ml-64 p-6 space-y-6">
-          <div className="flex items-center justify-between">
+        <main className="flex-1 ml-64 p-6 space-y-8 animate-fade-in">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Investimentos</h1>
-              <p className="text-muted-foreground">Sua carteira de investimentos</p>
+              <h1 className="text-3xl font-bold tracking-tight">Carteira de investimentos</h1>
+              <p className="text-muted-foreground">Acompanhe desempenho, rebalanceie em tempo real e registre novas operacoes.</p>
             </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Registrar Operação
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Nova Operação</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="symbol">Ativo</Label>
-                    <Select value={newTrade.symbol} onValueChange={(value) => setNewTrade(prev => ({...prev, symbol: value}))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um ativo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {popularAssets.map(asset => (
-                          <SelectItem key={asset} value={asset}>{asset}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="type">Tipo</Label>
-                      <Select value={newTrade.type} onValueChange={(value: "buy" | "sell") => setNewTrade(prev => ({...prev, type: value}))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="buy">Compra</SelectItem>
-                          <SelectItem value="sell">Venda</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="quantity">Quantidade</Label>
-                      <Input
-                        id="quantity"
-                        value={newTrade.quantity}
-                        onChange={(e) => setNewTrade(prev => ({...prev, quantity: e.target.value}))}
-                        placeholder="100"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="price">Preço (R$)</Label>
-                      <Input
-                        id="price"
-                        value={newTrade.price}
-                        onChange={(e) => setNewTrade(prev => ({...prev, price: e.target.value}))}
-                        placeholder="98,50"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="fees">Taxas (R$)</Label>
-                      <Input
-                        id="fees"
-                        value={newTrade.fees}
-                        onChange={(e) => setNewTrade(prev => ({...prev, fees: e.target.value}))}
-                        placeholder="5,00"
-                      />
-                    </div>
-                  </div>
-                  <Button onClick={handleAddTrade} className="w-full">
-                    Registrar Operação
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button variant="outline" onClick={toggleStreaming} size="sm">
+              {isStreaming ? (
+                <>
+                  <PauseCircle className="mr-2 h-4 w-4" /> Pausar streaming
+                </>
+              ) : (
+                <>
+                  <PlayCircle className="mr-2 h-4 w-4" /> Retomar streaming
+                </>
+              )}
+            </Button>
           </div>
 
-          {/* Portfolio Summary */}
           <div className="grid gap-6 lg:grid-cols-4">
-            <Card className="bg-gradient-primary text-white border-0">
+            <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-white/80">Patrimônio Total</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Patrimonio investido</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{formatCurrency(totalPortfolioValue)}</p>
-                <p className="text-xs text-white/70">Valor atual da carteira</p>
+                {summaryQuery.isLoading ? (
+                  <Skeleton className="h-8 w-32" />
+                ) : (
+                  <p className="text-2xl font-bold">{formatCurrency(summary.totalValue)}</p>
+                )}
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Rentabilidade</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Dividendos acumulados</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-financial-gain">+{formatPercentage(portfolioPerformance)}</p>
-                <p className="text-xs text-muted-foreground">Performance média</p>
+                {summaryQuery.isLoading ? (
+                  <Skeleton className="h-8 w-32" />
+                ) : (
+                  <p className="text-2xl font-bold text-financial-gain">{formatCurrency(summary.totalDividends)}</p>
+                )}
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Dividendos</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Performance media</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-financial-gain">{formatCurrency(totalDividends)}</p>
-                <p className="text-xs text-muted-foreground">Recebidos no período</p>
+                {summaryQuery.isLoading ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : (
+                  <p className={`text-2xl font-bold ${summary.performance >= 0 ? 'text-financial-gain' : 'text-financial-loss'}`}>
+                    {formatPercentage(summary.performance * 100)}
+                  </p>
+                )}
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Ativos</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Ativos monitorados</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{investments.length}</p>
-                <p className="text-xs text-muted-foreground">Na carteira</p>
+                {investmentsQuery.isLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold">{displayInvestments.length}</p>
+                )}
               </CardContent>
             </Card>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
-            {/* Asset Allocation */}
-            <Card className="lg:col-span-1">
-              <CardHeader>
+            <Card className="lg:col-span-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="flex items-center space-x-2">
-                  <PieChart className="h-5 w-5" />
-                  <span>Alocação de Ativos</span>
+                  <LineChartIcon className="h-5 w-5 text-primary" />
+                  <span>Preco em tempo real</span>
                 </CardTitle>
+                <Select value={selectedSymbol} onValueChange={setSelectedSymbol}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Ativo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {displayInvestments.map((investment) => (
+                      <SelectItem key={investment.symbol} value={investment.symbol}>
+                        {investment.symbol} — {investment.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Renda Fixa</span>
-                      <span>{currentAllocation.rf.toFixed(1)}% / {targetAllocation.rf}%</span>
-                    </div>
-                    <Progress value={currentAllocation.rf} className="h-2" />
+              <CardContent className="h-72">
+                {selectedHistory.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={selectedHistory}>
+                      <XAxis dataKey="time" tickFormatter={formatTimeLabel} minTickGap={32} />
+                      <YAxis tickFormatter={(value: number) => formatCurrency(value)} width={120} />
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={formatTimeLabel} />
+                      <Line type="monotone" dataKey="price" stroke="#2563eb" strokeWidth={2} dot={false} isAnimationActive={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    Aguardando atualizacao de precos para o ativo selecionado.
                   </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Ações/ETFs</span>
-                      <span>{currentAllocation.acoes.toFixed(1)}% / {targetAllocation.acoes}%</span>
-                    </div>
-                    <Progress value={currentAllocation.acoes} className="h-2" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>FIIs</span>
-                      <span>{currentAllocation.fiis.toFixed(1)}% / {targetAllocation.fiis}%</span>
-                    </div>
-                    <Progress value={currentAllocation.fiis} className="h-2" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Cripto</span>
-                      <span>{currentAllocation.cripto.toFixed(1)}% / {targetAllocation.cripto}%</span>
-                    </div>
-                    <Progress value={currentAllocation.cripto} className="h-2" />
-                  </div>
-                </div>
-                <Button variant="outline" className="w-full">
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  Sugestão de Rebalanceamento
-                </Button>
+                )}
               </CardContent>
             </Card>
-
-            {/* Portfolio Table */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Posições da Carteira</CardTitle>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="flex items-center space-x-2">
+                  <PieChartIcon className="h-5 w-5 text-primary" />
+                  <span>Alocacao por classe</span>
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Ativo</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Qtd</TableHead>
-                      <TableHead>P.M.</TableHead>
-                      <TableHead>Atual</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>%</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {investments.map((investment) => (
-                      <TableRow key={investment.id}>
-                        <TableCell className="font-medium">
-                          <div>
-                            <p className="font-semibold">{investment.symbol}</p>
-                            <p className="text-xs text-muted-foreground">{investment.name}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{investment.type}</Badge>
-                        </TableCell>
-                        <TableCell>{investment.quantity}</TableCell>
-                        <TableCell>{formatCurrency(investment.avgPrice)}</TableCell>
-                        <TableCell>{formatCurrency(investment.currentPrice)}</TableCell>
-                        <TableCell className="font-semibold">
-                          {formatCurrency(investment.totalValue)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-1">
-                            {investment.performance > 0 ? (
-                              <TrendingUp className="h-4 w-4 text-financial-gain" />
-                            ) : (
-                              <TrendingDown className="h-4 w-4 text-financial-loss" />
-                            )}
-                            <span className={investment.performance > 0 ? 'text-financial-gain' : 'text-financial-loss'}>
-                              {investment.performance > 0 ? '+' : ''}{formatPercentage(investment.performance)}
-                            </span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <CardContent className="h-72">
+                {allocationData.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={allocationData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={4}>
+                        {allocationData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} stroke="transparent" />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number, name) => [formatCurrency(value), name as string]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    Cadastre operacoes para visualizar a distribuicao.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Disclaimer */}
-          <Card className="border-warning bg-warning/5">
-            <CardContent className="p-4">
-              <p className="text-sm text-center text-muted-foreground">
-                ⚠️ <strong>Aviso Legal:</strong> As informações apresentadas são para fins educacionais e não constituem recomendação de investimento. 
-                Consulte sempre um profissional qualificado. Rentabilidade passada não garante resultado futuro.
-              </p>
+          <Card>
+            <CardHeader>
+              <CardTitle>Valor total da carteira (tempo real)</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              {portfolioHistory.length ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={portfolioHistory}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" tickFormatter={formatTimeLabel} minTickGap={32} />
+                    <YAxis tickFormatter={(value: number) => formatCurrency(value)} width={120} />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={formatTimeLabel} />
+                    <Area type="monotone" dataKey="price" stroke="#22c55e" fill="#22c55e33" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  Os dados da carteira serao exibidos assim que as operacoes forem registradas.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Registrar operacao</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-6">
+                <div className="md:col-span-1">
+                  <Label htmlFor="symbol">Ticker</Label>
+                  <Input
+                    id="symbol"
+                    placeholder="PETR4"
+                    value={tradeForm.symbol}
+                    onChange={(event) => setTradeForm((prev) => ({ ...prev, symbol: event.target.value.toUpperCase() }))}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="name">Nome do ativo</Label>
+                  <Input
+                    id="name"
+                    placeholder="Petrobras PN"
+                    value={tradeForm.name}
+                    onChange={(event) => setTradeForm((prev) => ({ ...prev, name: event.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label>Classe</Label>
+                  <Select value={tradeForm.assetType} onValueChange={(value) => setTradeForm((prev) => ({ ...prev, assetType: value }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ASSET_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Operacao</Label>
+                  <Select value={tradeForm.type} onValueChange={(value: TradePayload['type']) => setTradeForm((prev) => ({ ...prev, type: value }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="buy">Compra</SelectItem>
+                      <SelectItem value="sell">Venda</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="quantity">Quantidade</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    min="0"
+                    value={tradeForm.quantity}
+                    onChange={(event) => setTradeForm((prev) => ({ ...prev, quantity: event.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="price">Preco (R$)</Label>
+                  <Input
+                    id="price"
+                    placeholder="30,50"
+                    value={tradeForm.price}
+                    onChange={(event) => setTradeForm((prev) => ({ ...prev, price: event.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="fees">Taxas (R$)</Label>
+                  <Input
+                    id="fees"
+                    placeholder="0,00"
+                    value={tradeForm.fees}
+                    onChange={(event) => setTradeForm((prev) => ({ ...prev, fees: event.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="mt-4">
+                <Button onClick={handleTrade} disabled={tradeMutation.isPending}>
+                  {tradeMutation.isPending ? 'Registrando...' : 'Salvar operacao'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Posicoes atuais</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {investmentsQuery.isLoading ? (
+                <div className="space-y-3">
+                  {[0, 1, 2, 3, 4].map((item) => (
+                    <Skeleton key={item} className="h-16 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : displayInvestments.length ? (
+                <div className="space-y-3">
+                  {displayInvestments.map((investment) => (
+                    <div key={investment.symbol} className="flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50 md:flex-row md:items-center md:justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <p className="text-sm font-semibold">{investment.symbol}</p>
+                          <Badge variant="outline">{investment.type}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{investment.name}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-6 text-sm md:text-right">
+                        <div>
+                          <p className="text-muted-foreground">Quantidade</p>
+                          <p className="font-medium">{investment.quantity}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Preco atual</p>
+                          <p className="font-medium">{formatCurrency(investment.current_price)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Valor total</p>
+                          <p className="font-medium">{formatCurrency(investment.totalValue)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Performance</p>
+                          <p className={`font-medium ${investment.performance >= 0 ? 'text-financial-gain' : 'text-financial-loss'}`}>
+                            {formatPercentage(investment.performance * 100)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  Nenhuma posicao cadastrada ainda. Registre uma operacao para iniciar o acompanhamento.
+                </div>
+              )}
             </CardContent>
           </Card>
         </main>
