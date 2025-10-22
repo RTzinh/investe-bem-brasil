@@ -15,6 +15,8 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+const shouldSeed = process.env.SEED_SAMPLE_DATA === 'true';
+
 const createTableStatements = [
   `CREATE TABLE IF NOT EXISTS transactions (
     id TEXT PRIMARY KEY,
@@ -83,13 +85,13 @@ const existsData = (table: string) => {
   return row.count > 0;
 };
 
-if (!existsData('transactions')) {
+if (shouldSeed && !existsData('transactions')) {
   const insert = db.prepare(`INSERT INTO transactions (id, date, description, category, account, type, amount, notes)
     VALUES (@id, @date, @description, @category, @account, @type, @amount, @notes)`);
   const sample = [
     {
       date: new Date().toISOString().slice(0, 10),
-      description: 'Salário CLT',
+      description: 'Salï¿½rio CLT',
       category: 'Renda',
       account: 'Conta Corrente',
       type: 'income',
@@ -98,9 +100,9 @@ if (!existsData('transactions')) {
     },
     {
       date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString().slice(0, 10),
-      description: 'Supermercado Bom Preço',
-      category: 'Alimentação',
-      account: 'Cartão Crédito',
+      description: 'Supermercado Bom Preï¿½o',
+      category: 'Alimentaï¿½ï¿½o',
+      account: 'Cartï¿½o Crï¿½dito',
       type: 'expense',
       amount: 420.35,
       notes: ''
@@ -121,16 +123,16 @@ if (!existsData('transactions')) {
   insertMany(sample);
 }
 
-if (!existsData('budgets')) {
+if (shouldSeed && !existsData('budgets')) {
   const insert = db.prepare(`INSERT INTO budgets (id, name, category, "limit", period, notes)
     VALUES (@id, @name, @category, @limit, @period, @notes)`);
   const sample = [
     {
-      name: 'Alimentação',
-      category: 'Alimentação',
+      name: 'Alimentaï¿½ï¿½o',
+      category: 'Alimentaï¿½ï¿½o',
       limit: 1500,
       period: 'mensal',
-      notes: 'Meta baseada na média dos últimos 3 meses'
+      notes: 'Meta baseada na mï¿½dia dos ï¿½ltimos 3 meses'
     },
     {
       name: 'Transporte',
@@ -153,14 +155,14 @@ if (!existsData('budgets')) {
   insertMany(sample);
 }
 
-if (!existsData('goals')) {
+if (shouldSeed && !existsData('goals')) {
   const insert = db.prepare(`INSERT INTO goals (id, name, category, target_amount, current_amount, monthly_contribution, deadline, priority, notes)
     VALUES (@id, @name, @category, @target_amount, @current_amount, @monthly_contribution, @deadline, @priority, @notes)`);
   const today = new Date();
   const sample = [
     {
-      name: 'Reserva de Emergência',
-      category: 'Segurança',
+      name: 'Reserva de Emergï¿½ncia',
+      category: 'Seguranï¿½a',
       target_amount: 40000,
       current_amount: 22500,
       monthly_contribution: 2000,
@@ -185,7 +187,7 @@ if (!existsData('goals')) {
   insertMany(sample);
 }
 
-if (!existsData('investments')) {
+if (shouldSeed && !existsData('investments')) {
   const insert = db.prepare(`INSERT INTO investments (id, symbol, name, type, quantity, avg_price, current_price, target_allocation, dividends)
     VALUES (@id, @symbol, @name, @type, @quantity, @avg_price, @current_price, @target_allocation, @dividends)`);
   const sample = [

@@ -9,7 +9,7 @@ type KnowledgeEntry = {
   answer: string | ((history: ChatMessage[]) => Promise<string> | string);
 };
 
-const GEMINI_MODEL = 'gemini-1.5-flash-latest';
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.5-pro';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? 'AIzaSyCag_eYIGTTZfw-xSUw8iERcNuroOZO7G4';
 
 let model: ReturnType<GoogleGenerativeAI['getGenerativeModel']> | null = null;
