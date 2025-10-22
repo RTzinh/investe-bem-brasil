@@ -1,0 +1,2 @@
+[console_scripts]
+investe-bem-api = app.main:app

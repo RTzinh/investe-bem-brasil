@@ -1,0 +1,22 @@
+Metadata-Version: 2.4
+Name: investe-bem-brasil-backend
+Version: 0.1.0
+Summary: Backend FastAPI para monitoramento inteligente de carteira Investe Bem Brasil.
+Author: Investe Bem Brasil
+Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.111.0
+Requires-Dist: uvicorn[standard]>=0.30.0
+Requires-Dist: sqlmodel>=0.0.16
+Requires-Dist: sqlalchemy>=2.0.25
+Requires-Dist: pydantic>=2.6.0
+Requires-Dist: pydantic-settings>=2.2.1
+Requires-Dist: yfinance>=0.2.40
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: pandas>=2.2.2
+Requires-Dist: numpy>=1.26.4
+Requires-Dist: google-generativeai>=0.5.4
+Requires-Dist: aiosmtplib>=2.0.0
+Provides-Extra: dev
+Requires-Dist: ipykernel; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"
