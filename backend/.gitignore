@@ -3,3 +3,10 @@ __pycache__/
 .venv/
 app/db/*.db
 app/db/*.db-journal
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.staging
+!*.env.example

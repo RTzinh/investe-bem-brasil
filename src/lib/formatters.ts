@@ -9,8 +9,16 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
-export const formatDate = (date: Date | string): string => {
+export const formatDate = (date: Date | string | null | undefined): string => {
+  if (!date) {
+    return '-';
+  }
+
   const dateObj = typeof date === 'string' ? new Date(date) : date;
+  if (Number.isNaN(dateObj.getTime())) {
+    return '-';
+  }
+
   return new Intl.DateTimeFormat('pt-BR').format(dateObj);
 };
 

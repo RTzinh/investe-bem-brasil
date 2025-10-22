@@ -1,3 +1,4 @@
+import json
 from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional
@@ -50,13 +51,41 @@ class Settings(BaseSettings):
         env_file=(".env", ".env.local", ".env.development"),
         env_file_encoding="utf-8",
         extra="ignore",
+        enable_decoding=False,
     )
 
     @field_validator("default_symbols", mode="before")
     @classmethod
     def _split_symbols(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return []
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                parsed = value
+            if isinstance(parsed, list):
+                return [str(symbol).strip() for symbol in parsed if str(symbol).strip()]
             return [symbol.strip() for symbol in value.split(",") if symbol.strip()]
+        return value
+
+    @field_validator("email_recipients", mode="before")
+    @classmethod
+    def _split_emails(cls, value: Optional[str | list[str]]) -> list[str]:
+        if value in (None, "", []):
+            return []
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return []
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                parsed = value
+            if isinstance(parsed, list):
+                return [str(email).strip() for email in parsed if str(email).strip()]
+            return [email.strip() for email in value.split(",") if email.strip()]
         return value
 
 
