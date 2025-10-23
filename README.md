@@ -1,66 +1,90 @@
 # Investe Bem Brasil
 
-Aplicacao de financas pessoais e inteligencia patrimonial com dashboard interativo, automacoes de orcamento, metas, investimentos e uma camada de IA que gera insights explicaveis.
+Plataforma de inteligencia patrimonial que combina automacao financeira, monitoramento de investimentos em tempo real e uma camada de IA explicavel para apoiar decisoes de investidores e consultores.
 
-## Tecnologias principais
+## Visao Geral
 
-- Front-end: Vite, React, TypeScript, Tailwind, shadcn/ui, Recharts, React Query
-- Backend (legado): Express, Socket.IO, SQLite (better-sqlite3)
-- Backend (monitoramento inteligente): Python 3.11, FastAPI, SQLModel, Pandas, Gemini
-- IA: Google Gemini (SDK JS no front e API REST no backend Python)
+- **Dashboard unificado**: transacoes, orcamentos, metas, carteira e alertas em uma unica experiencia React + Tailwind.
+- **Backends especializados**  
+  - **Express + SQLite** (Node.js) para operacoes transacionais, streaming via Socket.IO e autenticacao por chave.  
+  - **FastAPI + SQLModel** (Python) para monitoramento inteligente, metricas quantitativas e insights Gemini.
+- **IA explicavel**: chat financeiro com fallback educacional, insights automaticos e explicacao de alertas.
+- **Seguranca embutida**: rate limiting, validacao com Zod, logging estruturado (Pino) e proxy seguro para o servico de IA.
 
-## Pre-requisitos
+## Arquitetura em Alto Nivel
 
-- Node.js >= 18 e npm >= 9 para front-end e servidor Express
-- Python >= 3.11 para o backend FastAPI
+| Camada | Tecnologias | Responsabilidades |
+| ------ | ------------ | ----------------- |
+| Front-end | Vite, React 18, TypeScript, shadcn/ui, React Query | UI responsiva, orquestracao de dados, integracao com Socket.IO |
+| API Express | Express 5, better-sqlite3, Socket.IO, Zod | CRUDs financeiros, importacao CSV, autenticacao via API Key, streaming de carteira |
+| API FastAPI | FastAPI, SQLModel, Pandas, Gemini | Coleta de mercado, metricas quantitativas, rebalanceamento e insights de IA |
+| Persistencia | SQLite compartilhado (`backend/app/db/investebem.db`) | Dados transacionais e de monitoramento em um unico arquivo (WAL ativo) |
 
-## Configuracao inicial
+## Principais Capacidades
+
+- Dashboard financeiro com visao de receitas, despesas, metas e carteira consolidada.
+- Importacao de extratos CSV com sanitizacao automatica.
+- Orcamentos, metas e investimentos com calculo de status, historicos e alertas.
+- Streaming de precos (Socket.IO) sincronizado com metricas reais do FastAPI.
+- Insights de IA e chat financeiro utilizando Google Gemini via backend Python.
+
+## Seguranca Operacional
+
+- Toda rota Express exige `x-api-key` (ou `Authorization: Bearer`) usando `SERVER_API_KEY`.
+- Rate limiting (120 req/min) e Helmet habilitados por padrao.
+- Validacao com Zod para evitar entradas inconsistentes.
+- Logs estruturados com Pino e `pino-pretty` em modo desenvolvimento.
+- O front nunca acessa o Gemini diretamente; tudo passa pelo proxy seguro.
+
+## Requisitos
+
+- Node.js >= 18 e npm >= 9  
+- Python >= 3.11  
+- (Opcional) Docker e Docker Compose
+
+## Configuracao Rapida
 
 ```bash
 npm install
 cp .env.example .env
 cp server/.env.example server/.env
+cp backend/.env.example backend/.env
 ```
+
+1. Defina uma chave segura (>=16 caracteres) para `SERVER_API_KEY` e replique em `VITE_SERVER_API_KEY`.
+2. Ajuste `SQLITE_PATH` caso queira armazenar o banco em outro local.
+3. Preencha `GEMINI_API_KEY` no `.env` do FastAPI para habilitar IA.
 
 ### Variaveis relevantes
 
-- `VITE_API_URL`: URL base da API (padrao `http://localhost:4000/api` ou `http://localhost:8000/api/v1`)
-- `VITE_SOCKET_URL`: URL do websocket de investimentos (padrao `http://localhost:4000`)
-- `GEMINI_API_KEY`: chave Google Gemini usada pelo front-end
+| Variavel | Contexto | Descricao |
+| -------- | -------- | --------- |
+| `SERVER_API_KEY` | Express | Chave obrigatoria para todas as rotas (enviada via `x-api-key`). |
+| `VITE_SERVER_API_KEY` | Front-end | Usada para popular o cabecalho automaticamente. |
+| `VITE_API_URL` / `VITE_SOCKET_URL` | Front-end | Endpoints para REST e Socket.IO (padrao `http://localhost:4000`). |
+| `FASTAPI_BASE_URL` | Express | URL para delegar chamadas inteligentes (`http://localhost:8000/api/v1`). |
+| `GEMINI_API_KEY` | FastAPI | Chave do Google Gemini utilizada nos fluxos de IA. |
 
-## Executando o projeto
+## Execucao Local
 
-### Backend Express (existente)
+### Backend FastAPI
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate      # Windows
+# source .venv/bin/activate   # Linux/macOS
+pip install -e .
+uvicorn app.main:app --reload --port 8000
+```
+
+### Backend Express
 
 ```bash
 npm run server
 ```
 
-Servidor disponível em `http://localhost:4000` com base SQLite em `server/data/investebem.db`.
-
-### Backend FastAPI (monitoramento inteligente)
-
-```bash
-cd backend
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-# source .venv/bin/activate     # Linux/macOS
-pip install -e .
-cp .env.example .env
-uvicorn app.main:app --reload --port 8000
-```
-
-Rotas principais em `http://localhost:8000/api/v1`:
-
-- `GET /health` - health-check do servico
-- `GET /assets` - lista ativos monitorados e metricas calculadas
-- `POST /assets/{symbol}/refresh` - coleta intraday/EOD (Yahoo/Alpaca)
-- `GET /portfolio/snapshot` - carteira consolidada e desvios de alocacao
-- `POST /portfolio/rebalance` - sugestoes de trades considerando custo minimo
-- `GET /alerts` - alertas inteligentes (variacao, volume, rebalance, etc.)
-- `POST /insights` - resumos explicaveis de relatorios/noticias via Gemini
-
-O scheduler interno atualiza precos, recalcula metricas, detecta anomalias e gera alertas conforme `SCHEDULER_TICK_SECONDS` definido no `.env` do backend.
+O Express e o FastAPI compartilham o SQLite em `backend/app/db/investebem.db`. Ajuste `SQLITE_PATH` se necessario.
 
 ### Front-end Vite
 
@@ -68,39 +92,66 @@ O scheduler interno atualiza precos, recalcula metricas, detecta anomalias e ger
 npm run dev
 ```
 
-A interface sobe em `http://localhost:5173`. Ajuste `VITE_API_URL` para direcionar chamadas ao backend FastAPI se desejar consumir os novos endpoints.
+Interface disponivel em `http://localhost:5173`.
 
-## Modulos principais do backend Python
+### Execucao integrada (Docker Compose)
 
-- **Ingestao de dados**: integra Yahoo Finance (EOD) e Alpaca (opcional) para importar OHLCV, volume e corporate actions.
-- **Analise quantitativa**: calcula retorno, volatilidade anualizada, drawdown, beta, Sharpe, ATR e volume medio.
-- **Deteccao de eventos**: identifica variacoes percentuais, rompimentos de ATR e picos de volume com alertas estruturados.
-- **Interpretacao IA**: usa Gemini para explicar alertas e resumir documentos/noticias com contexto e impacto.
-- **Rebalanceamento**: monta snapshot da carteira, compara com pesos alvo e sugere trades com custo estimado.
-- **Alertas**: persiste alertas, permite confirmacao, envia email opcional (SMTP) e gera explicacoes via IA.
+```bash
+SERVER_API_KEY=troque-esta-chave docker compose up --build
+```
 
-## Roadmap e diferenciais sugeridos
+Servicos expostos:
 
-- **Perfilagem dinamica do investidor**: questionario gamificado que ajusta automaticamente risco alvo, bandas de alocacao e linguagem das recomendacoes.
-- **Simulador de cenarios macro**: stress tests para choques de juros, eventos geopoliticos ou halving de cripto com impacto projetado em volatilidade e drawdown.
-- **Score ESG e tematico**: consolidar dados publicos (CVM, relatórios de sustentabilidade) para priorizar empresas com melhor perfil socioambiental.
-- **Recomendacoes fiscais inteligentes**: motor de tax-loss harvesting que sugere vendas/compensacoes respeitando janelas de restricao.
-- **Knowledge base autoatualizavel**: pipeline que resume atas do COPOM, FED e cartas de gestores gerando briefing semanal no app.
-- **Localizacao multilanguage**: toggle pt-BR/en-US com traducao contextual para alertas, onboarding e chat educacional.
-- **Companion PWA**: Progressive Web App com push notifications para alertas criticos e tarefas de rebalanceamento.
-- **Integraçao Open Finance**: importacao automatica de extratos via Open Finance Brasil para manter patrimonio sincronizado.
+- `frontend` -> `http://localhost:5173`
+- `api` (Express + Socket.IO) -> `http://localhost:4000`
+- `fastapi` -> `http://localhost:8000`
 
-## Scripts uteis
+`shared-db` e o volume nomeado que sincroniza o SQLite entre os containers.
 
-| Comando                        | Descricao                                 |
-| ------------------------------ | ----------------------------------------- |
-| `npm run dev`                  | Inicia o front-end Vite                   |
-| `npm run server`               | Inicia o backend Express                  |
-| `npm run server:dev`           | Express com hot reload                    |
-| `npm run build`                | Build do front-end                        |
-| `npm run preview`              | Preview do build                          |
-| `uvicorn app.main:app --reload`| Sobe o backend FastAPI (ajuste porta)     |
+## Acesso a API
+
+Exemplo de chamada autenticada:
+
+```bash
+curl -H "x-api-key: Rn77sv5rxZMkhHRz" http://localhost:4000/api/transactions
+```
+
+Sem o cabecalho o servidor responde `{"message":"Unauthorized request"}`.
+
+Ferramentas uteis:
+
+- Postman/Insomnia: configurar `x-api-key` nos cabecalhos.
+- Console do navegador:
+  ```js
+  fetch('http://localhost:4000/api/transactions', {
+    headers: { 'x-api-key': 'sua-chave' },
+  }).then(r => r.json()).then(console.log);
+  ```
+
+## Qualidade e Observabilidade
+
+| Comando | Descricao |
+| ------- | --------- |
+| `npm run lint` | ESLint cobrindo front e backend |
+| `npm run test` | Vitest + Supertest com cobertura V8 |
+| `npm run build` | Build de producao do front |
+
+- CI (`.github/workflows/ci.yml`) executa lint, testes e build em pushes/PRs.
+- Rate limiting, Helmet e logs estruturados ativos por padrao.
+
+## Roadmap Sugerido
+
+- Autenticacao por usuario/cliente com controle de permissoes.
+- Observabilidade completa (Prometheus + Grafana) e alarmes.
+- Integracao com provedores Open Finance e APIs bancarias.
+- SDK publico e documentacao de parceiros.
+
+## Suporte e Contribuicao
+
+1. Abra uma issue descrevendo contexto, logs e passos para reproduzir.
+2. Antes de enviar PR, execute `npm run lint && npm run test`.
+3. Use os arquivos `.env.example` como referencia de configuracao.
 
 ---
 
-Made with foco em planejamento financeiro inteligente.
+Projeto orientado para planejamento financeiro inteligente com foco em auditoria, seguranca e colaboracao entre equipes de tecnologia e investimentos.

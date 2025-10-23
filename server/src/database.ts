@@ -1,16 +1,18 @@
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { randomUUID } from 'crypto';
+import { logger } from './logger.js';
 
-const dataDir = join(process.cwd(), 'server', 'data');
-const dbPath = join(dataDir, 'investebem.db');
+const customDbPath = process.env.SQLITE_PATH;
+const resolvedDbPath = customDbPath ?? join(process.cwd(), 'backend', 'app', 'db', 'investebem.db');
+const dataDir = dirname(resolvedDbPath);
 
 if (!existsSync(dataDir)) {
   mkdirSync(dataDir, { recursive: true });
 }
 
-const db = new Database(dbPath);
+const db = new Database(resolvedDbPath);
 
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
@@ -77,7 +79,12 @@ const createTableStatements = [
 ];
 
 for (const statement of createTableStatements) {
-  db.prepare(statement).run();
+  try {
+    db.prepare(statement).run();
+  } catch (error) {
+    logger.error({ err: error, statement }, 'Erro ao criar tabela');
+    throw error;
+  }
 }
 
 const existsData = (table: string) => {
@@ -91,7 +98,7 @@ if (shouldSeed && !existsData('transactions')) {
   const sample = [
     {
       date: new Date().toISOString().slice(0, 10),
-      description: 'Sal�rio CLT',
+      description: 'Salário CLT',
       category: 'Renda',
       account: 'Conta Corrente',
       type: 'income',
@@ -100,9 +107,9 @@ if (shouldSeed && !existsData('transactions')) {
     },
     {
       date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString().slice(0, 10),
-      description: 'Supermercado Bom Pre�o',
-      category: 'Alimenta��o',
-      account: 'Cart�o Cr�dito',
+      description: 'Supermercado Bom Preço',
+      category: 'Alimentação',
+      account: 'Cartão Crédito',
       type: 'expense',
       amount: 420.35,
       notes: ''
@@ -118,7 +125,7 @@ if (shouldSeed && !existsData('transactions')) {
     }
   ];
   const insertMany = db.transaction((rows: typeof sample) => {
-    rows.forEach(row => insert.run({ ...row, id: randomUUID() }));
+    rows.forEach((row) => insert.run({ ...row, id: randomUUID() }));
   });
   insertMany(sample);
 }
@@ -128,11 +135,11 @@ if (shouldSeed && !existsData('budgets')) {
     VALUES (@id, @name, @category, @limit, @period, @notes)`);
   const sample = [
     {
-      name: 'Alimenta��o',
-      category: 'Alimenta��o',
+      name: 'Alimentação',
+      category: 'Alimentação',
       limit: 1500,
       period: 'mensal',
-      notes: 'Meta baseada na m�dia dos �ltimos 3 meses'
+      notes: 'Meta baseada na média dos últimos 3 meses'
     },
     {
       name: 'Transporte',
@@ -150,7 +157,7 @@ if (shouldSeed && !existsData('budgets')) {
     }
   ];
   const insertMany = db.transaction((rows: typeof sample) => {
-    rows.forEach(row => insert.run({ ...row, id: randomUUID() }));
+    rows.forEach((row) => insert.run({ ...row, id: randomUUID() }));
   });
   insertMany(sample);
 }
@@ -161,8 +168,8 @@ if (shouldSeed && !existsData('goals')) {
   const today = new Date();
   const sample = [
     {
-      name: 'Reserva de Emerg�ncia',
-      category: 'Seguran�a',
+      name: 'Reserva de Emergência',
+      category: 'Segurança',
       target_amount: 40000,
       current_amount: 22500,
       monthly_contribution: 2000,
@@ -182,7 +189,7 @@ if (shouldSeed && !existsData('goals')) {
     }
   ];
   const insertMany = db.transaction((rows: typeof sample) => {
-    rows.forEach(row => insert.run({ ...row, id: randomUUID() }));
+    rows.forEach((row) => insert.run({ ...row, id: randomUUID() }));
   });
   insertMany(sample);
 }
@@ -233,7 +240,7 @@ if (shouldSeed && !existsData('investments')) {
     }
   ];
   const insertMany = db.transaction((rows: typeof sample) => {
-    rows.forEach(row => insert.run({ ...row, id: randomUUID() }));
+    rows.forEach((row) => insert.run({ ...row, id: randomUUID() }));
   });
   insertMany(sample);
 }

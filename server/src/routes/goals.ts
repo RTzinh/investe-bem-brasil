@@ -1,9 +1,44 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { randomUUID } from 'crypto';
+import { z } from 'zod';
 import db from '../database.js';
+import { logger } from '../logger.js';
 import type { Goal } from '../types.js';
 
 export const router = Router();
+
+const prioritySchema = z.enum(['alta', 'media', 'baixa']);
+const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+const goalPayloadSchema = z
+  .object({
+    name: z.string().trim().min(1).max(160),
+    category: z.string().trim().min(1).max(120),
+    target_amount: z.coerce
+      .number()
+      .refine((value) => Number.isFinite(value) && value >= 0, { message: 'Valor alvo inválido' }),
+    current_amount: z.coerce
+      .number()
+      .refine((value) => Number.isFinite(value) && value >= 0, { message: 'Valor atual inválido' }),
+    monthly_contribution: z.coerce
+      .number()
+      .refine(
+        (value) => Number.isFinite(value) && value >= 0,
+        { message: 'Aporte mensal inválido' },
+      ),
+    deadline: z
+      .string()
+      .trim()
+      .regex(isoDateRegex, { message: 'Deadline deve estar no formato YYYY-MM-DD' }),
+    priority: prioritySchema,
+    notes: z.string().trim().max(500).optional().nullable(),
+  })
+  .transform((value) => ({
+    ...value,
+    name: value.name.trim(),
+    category: value.category.trim(),
+    notes: value.notes?.trim() ?? '',
+  }));
 
 const withDerivedFields = (goal: Goal) => {
   const progress = goal.target_amount > 0 ? goal.current_amount / goal.target_amount : 0;
@@ -14,13 +49,14 @@ const withDerivedFields = (goal: Goal) => {
   const monthsUntilDeadline = Math.max(
     0,
     (deadlineDate.getFullYear() - new Date().getFullYear()) * 12 +
-      (deadlineDate.getMonth() - new Date().getMonth())
+      (deadlineDate.getMonth() - new Date().getMonth()),
   );
-  const status = progress >= 1
-    ? 'completed'
-    : monthsToGoal <= monthsUntilDeadline
-      ? 'onTrack'
-      : 'delayed';
+  const status =
+    progress >= 1
+      ? 'completed'
+      : monthsToGoal <= monthsUntilDeadline
+        ? 'onTrack'
+        : 'delayed';
 
   return { ...goal, progress, remainingAmount, monthsToGoal, status };
 };
@@ -42,50 +78,96 @@ router.get('/summary', (_req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { name, category, target_amount, current_amount, monthly_contribution, deadline, priority, notes } = req.body;
+  const parsed = goalPayloadSchema.safeParse(req.body);
 
-  if (!name || !category || typeof target_amount !== 'number' || typeof current_amount !== 'number' || typeof monthly_contribution !== 'number' || !deadline || !priority) {
-    return res.status(400).json({ message: 'Dados inválidos para meta.' });
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Dados inválidos para meta.',
+      details: parsed.error.flatten(),
+    });
   }
 
+  const payload = parsed.data;
+
   const id = randomUUID();
-  db.prepare(`
-    INSERT INTO goals (id, name, category, target_amount, current_amount, monthly_contribution, deadline, priority, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, name, category, target_amount, current_amount, monthly_contribution, deadline, priority, notes ?? '');
+  db.prepare(
+    `INSERT INTO goals (id, name, category, target_amount, current_amount, monthly_contribution, deadline, priority, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    id,
+    payload.name,
+    payload.category,
+    payload.target_amount,
+    payload.current_amount,
+    payload.monthly_contribution,
+    payload.deadline,
+    payload.priority,
+    payload.notes ?? '',
+  );
 
   const created = db.prepare('SELECT * FROM goals WHERE id = ?').get(id) as Goal;
   res.status(201).json(withDerivedFields(created));
 });
 
 router.put('/:id', (req, res) => {
+  const parsed = goalPayloadSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Dados inválidos para atualizar meta.',
+      details: parsed.error.flatten(),
+    });
+  }
+
+  const payload = parsed.data;
   const { id } = req.params;
-  const { name, category, target_amount, current_amount, monthly_contribution, deadline, priority, notes } = req.body;
   const existing = db.prepare('SELECT * FROM goals WHERE id = ?').get(id) as Goal | undefined;
   if (!existing) {
     return res.status(404).json({ message: 'Meta não encontrada.' });
   }
 
-  db.prepare(`UPDATE goals SET name = ?, category = ?, target_amount = ?, current_amount = ?, monthly_contribution = ?, deadline = ?, priority = ?, notes = ? WHERE id = ?`)
-    .run(name, category, target_amount, current_amount, monthly_contribution, deadline, priority, notes ?? '', id);
+  db.prepare(
+    `UPDATE goals
+     SET name = ?, category = ?, target_amount = ?, current_amount = ?, monthly_contribution = ?, deadline = ?, priority = ?, notes = ?
+     WHERE id = ?`,
+  ).run(
+    payload.name,
+    payload.category,
+    payload.target_amount,
+    payload.current_amount,
+    payload.monthly_contribution,
+    payload.deadline,
+    payload.priority,
+    payload.notes ?? '',
+    id,
+  );
 
   const updated = db.prepare('SELECT * FROM goals WHERE id = ?').get(id) as Goal;
   res.json(withDerivedFields(updated));
 });
 
+const contributionSchema = z.object({
+  amount: z.coerce
+    .number()
+    .refine((value) => Number.isFinite(value) && value > 0, { message: 'Valor inválido' }),
+});
+
 router.post('/:id/contribute', (req, res) => {
-  const { id } = req.params;
-  const { amount } = req.body;
-  if (typeof amount !== 'number' || amount <= 0) {
-    return res.status(400).json({ message: 'Valor de contribuição inválido.' });
+  const parsed = contributionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Valor de contribuição inválido.',
+      details: parsed.error.flatten(),
+    });
   }
 
+  const { id } = req.params;
   const existing = db.prepare('SELECT * FROM goals WHERE id = ?').get(id) as Goal | undefined;
   if (!existing) {
     return res.status(404).json({ message: 'Meta não encontrada.' });
   }
 
-  const newAmount = existing.current_amount + amount;
+  const newAmount = existing.current_amount + parsed.data.amount;
   db.prepare('UPDATE goals SET current_amount = ? WHERE id = ?').run(newAmount, id);
   const updated = db.prepare('SELECT * FROM goals WHERE id = ?').get(id) as Goal;
   res.json(withDerivedFields(updated));
@@ -95,6 +177,7 @@ router.delete('/:id', (req, res) => {
   const { id } = req.params;
   const result = db.prepare('DELETE FROM goals WHERE id = ?').run(id);
   if (result.changes === 0) {
+    logger.warn({ goalId: id }, 'Tentativa de excluir meta inexistente');
     return res.status(404).json({ message: 'Meta não encontrada.' });
   }
   res.status(204).send();

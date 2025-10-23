@@ -8,6 +8,7 @@ app/api/v1/routes/__init__.py
 app/api/v1/routes/alerts.py
 app/api/v1/routes/analytics.py
 app/api/v1/routes/assets.py
+app/api/v1/routes/assistant.py
 app/api/v1/routes/health.py
 app/api/v1/routes/insights.py
 app/api/v1/routes/portfolio.py
@@ -27,6 +28,7 @@ app/schemas/__init__.py
 app/schemas/alert.py
 app/schemas/analytics.py
 app/schemas/asset.py
+app/schemas/assistant.py
 app/schemas/insight.py
 app/schemas/portfolio.py
 app/services/__init__.py

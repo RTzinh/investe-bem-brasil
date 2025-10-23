@@ -6,6 +6,7 @@ import { router as investmentsRouter } from './investments.js';
 import { router as reportsRouter } from './reports.js';
 import { router as dashboardRouter } from './dashboard.js';
 import { router as assistantRouter } from './assistant.js';
+import { router as aiRouter } from './ai.js';
 
 export const router = Router();
 
@@ -16,3 +17,4 @@ router.use('/investments', investmentsRouter);
 router.use('/reports', reportsRouter);
 router.use('/dashboard', dashboardRouter);
 router.use('/assistant', assistantRouter);
+router.use('/ai', aiRouter);

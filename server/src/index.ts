@@ -3,14 +3,18 @@ import http from 'http';
 import { Server } from 'socket.io';
 import { createApp } from './app.js';
 import db from './database.js';
+import { config } from './config.js';
+import { logger } from './logger.js';
+import { fetchFastApiAssets } from './services/fastapi.js';
+import type { FastApiAsset } from './services/fastapi.js';
 import type { Investment } from './types.js';
 
-const PORT = Number(process.env.PORT) || 4000;
+const PORT = config.PORT;
 
 const app = createApp();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*', credentials: false }
+  cors: { origin: '*', credentials: false },
 });
 
 const broadcastInvestments = () => {
@@ -28,8 +32,48 @@ const broadcastInvestments = () => {
   io.emit('investment:stream', { data: payload, timestamp: new Date().toISOString() });
 };
 
+const syncInvestmentsWithFastApi = async () => {
+  try {
+    const assets = await fetchFastApiAssets();
+    if (!assets.length) {
+      return;
+    }
+
+    const symbolMap = new Map<string, FastApiAsset>();
+    assets.forEach((asset) => {
+      const base = asset.symbol.toUpperCase();
+      symbolMap.set(base, asset);
+      if (base.includes('.')) {
+        symbolMap.set(base.split('.')[0] ?? base, asset);
+      }
+      if (base.includes('-')) {
+        symbolMap.set(base.split('-')[0] ?? base, asset);
+      }
+    });
+
+    const investments = db.prepare('SELECT * FROM investments').all() as Investment[];
+    const updateStatement = db.prepare(
+      'UPDATE investments SET current_price = ? WHERE id = ?',
+    );
+
+    const updateMany = db.transaction((rows: Investment[]) => {
+      rows.forEach((investment) => {
+        const asset = symbolMap.get(investment.symbol.toUpperCase());
+        const lastPrice = asset?.metrics?.last_price;
+        if (typeof lastPrice === 'number' && Number.isFinite(lastPrice)) {
+          updateStatement.run(lastPrice, investment.id);
+        }
+      });
+    });
+
+    updateMany(investments);
+  } catch (error) {
+    logger.warn({ err: error }, 'Falha ao sincronizar preços com FastAPI');
+  }
+};
+
 io.on('connection', (socket) => {
-  socket.emit('investment:ready', { message: 'Conectado a stream de investimentos.' });
+  socket.emit('investment:ready', { message: 'Conectado à stream de investimentos.' });
   const investments = db.prepare('SELECT * FROM investments').all() as Investment[];
   socket.emit('investment:stream', {
     data: investments.map((inv) => ({
@@ -46,19 +90,17 @@ io.on('connection', (socket) => {
   });
 });
 
-setInterval(() => {
-  const investments = db.prepare('SELECT * FROM investments').all() as Investment[];
-  const updateStatement = db.prepare('UPDATE investments SET current_price = ? WHERE id = ?');
+const startPriceStreaming = () => {
+  const run = async () => {
+    await syncInvestmentsWithFastApi();
+    broadcastInvestments();
+  };
+  void run();
+  setInterval(() => void run(), 15_000);
+};
 
-  investments.forEach((investment) => {
-    const variation = 1 + (Math.random() - 0.5) * 0.02; // +/- 1%
-    const newPrice = Math.max(investment.current_price * variation, 0.01);
-    updateStatement.run(newPrice, investment.id);
-  });
-
-  broadcastInvestments();
-}, 5000);
+startPriceStreaming();
 
 server.listen(PORT, () => {
-  console.log(`Servidor iniciado na porta ${PORT}`);
+  logger.info({ port: PORT }, 'Servidor iniciado');
 });

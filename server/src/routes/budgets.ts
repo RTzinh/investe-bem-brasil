@@ -1,9 +1,29 @@
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
+import { z } from 'zod';
 import db from '../database.js';
+import { logger } from '../logger.js';
 import type { Budget } from '../types.js';
 
 export const router = Router();
+
+const budgetPayloadSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    category: z.string().trim().min(1).max(120),
+    limit: z.coerce
+      .number()
+      .refine((value) => Number.isFinite(value) && value >= 0, { message: 'Limite deve ser positivo' }),
+    period: z.string().trim().min(1).max(50),
+    notes: z.string().trim().max(500).optional().nullable(),
+  })
+  .transform((value) => ({
+    ...value,
+    name: value.name.trim(),
+    category: value.category.trim(),
+    period: value.period.trim(),
+    notes: value.notes?.trim() ?? '',
+  }));
 
 const getCurrentPeriodRange = () => {
   const now = new Date();
@@ -14,9 +34,15 @@ const getCurrentPeriodRange = () => {
 
 const mapBudgetWithUsage = (budget: Budget) => {
   const { start, end } = getCurrentPeriodRange();
-  const row = db.prepare(
-    `SELECT SUM(amount) AS total FROM transactions WHERE category = ? AND type = 'expense' AND date BETWEEN ? AND ?`
-  ).get(budget.category, start, end) as { total: number | null };
+  const row = db
+    .prepare(
+      `SELECT SUM(amount) AS total
+       FROM transactions
+       WHERE category = ?
+         AND type = 'expense'
+         AND date BETWEEN ? AND ?`,
+    )
+    .get(budget.category, start, end) as { total: number | null };
   const spent = row.total ?? 0;
   const remaining = budget.limit - spent;
   const usage = budget.limit > 0 ? spent / budget.limit : 0;
@@ -40,30 +66,47 @@ router.get('/summary', (_req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { name, category, limit, period, notes } = req.body;
-
-  if (!name || !category || typeof limit !== 'number' || !period) {
-    return res.status(400).json({ message: 'Dados inválidos para criar orçamento.' });
+  const parsed = budgetPayloadSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Dados invÃ¡lidos para criar orÃ§amento.',
+      details: parsed.error.flatten(),
+    });
   }
 
+  const payload = parsed.data;
+
   const id = randomUUID();
-  db.prepare(`INSERT INTO budgets (id, name, category, "limit", period, notes) VALUES (?, ?, ?, ?, ?, ?)`)
-    .run(id, name, category, limit, period, notes ?? '');
+  db.prepare(
+    `INSERT INTO budgets (id, name, category, "limit", period, notes)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(id, payload.name, payload.category, payload.limit, payload.period, payload.notes ?? '');
 
   const budget = db.prepare('SELECT * FROM budgets WHERE id = ?').get(id) as Budget;
   res.status(201).json(mapBudgetWithUsage(budget));
 });
 
 router.put('/:id', (req, res) => {
-  const { id } = req.params;
-  const { name, category, limit, period, notes } = req.body;
-  const existing = db.prepare('SELECT * FROM budgets WHERE id = ?').get(id) as Budget | undefined;
-  if (!existing) {
-    return res.status(404).json({ message: 'Orçamento não encontrado.' });
+  const parsed = budgetPayloadSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Dados invÃ¡lidos para atualizar orÃ§amento.',
+      details: parsed.error.flatten(),
+    });
   }
 
-  db.prepare(`UPDATE budgets SET name = ?, category = ?, "limit" = ?, period = ?, notes = ? WHERE id = ?`)
-    .run(name, category, limit, period, notes ?? '', id);
+  const payload = parsed.data;
+  const { id } = req.params;
+  const existing = db.prepare('SELECT * FROM budgets WHERE id = ?').get(id) as Budget | undefined;
+  if (!existing) {
+    return res.status(404).json({ message: 'OrÃ§amento nÃ£o encontrado.' });
+  }
+
+  db.prepare(
+    `UPDATE budgets
+     SET name = ?, category = ?, "limit" = ?, period = ?, notes = ?
+     WHERE id = ?`,
+  ).run(payload.name, payload.category, payload.limit, payload.period, payload.notes ?? '', id);
 
   const updated = db.prepare('SELECT * FROM budgets WHERE id = ?').get(id) as Budget;
   res.json(mapBudgetWithUsage(updated));
@@ -73,7 +116,8 @@ router.delete('/:id', (req, res) => {
   const { id } = req.params;
   const result = db.prepare('DELETE FROM budgets WHERE id = ?').run(id);
   if (result.changes === 0) {
-    return res.status(404).json({ message: 'Orçamento não encontrado.' });
+    logger.warn({ budgetId: id }, 'Tentativa de excluir orÃ§amento inexistente');
+    return res.status(404).json({ message: 'OrÃ§amento nÃ£o encontrado.' });
   }
   res.status(204).send();
 });

@@ -57,7 +57,7 @@ const PERIODS = [
 
 const getBudgetStatus = (budget: BudgetResponse) => {
   if (budget.usage >= 1) return { status: 'exceeded', color: 'destructive', label: 'Excedido' };
-  if (budget.usage >= 0.8) return { status: 'warning', color: 'warning', label: 'Atenção' };
+  if (budget.usage >= 0.8) return { status: 'warning', color: 'secondary', label: 'Atenção' };
   return { status: 'good', color: 'default', label: 'Saudável' };
 };
 
@@ -313,7 +313,7 @@ export default function Orcamentos() {
                   <Card key={budget.id} className="transition-all hover:shadow-card">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-lg font-semibold">{budget.name || budget.category}</CardTitle>
-                      <Badge variant={status.color as any} className="flex items-center space-x-1">
+                      <Badge variant={status.color} className="flex items-center space-x-1">
                         {getStatusIcon(status.status)}
                         <span>{status.label}</span>
                       </Badge>

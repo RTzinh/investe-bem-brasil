@@ -19,6 +19,10 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   if (init.body && !(init.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
+  const apiKey = import.meta.env.VITE_SERVER_API_KEY;
+  if (apiKey) {
+    headers.set('x-api-key', apiKey);
+  }
 
   const response = await fetch(resolveUrl(path), {
     ...init,
@@ -113,6 +117,9 @@ export const api = {
   assistant: {
     chat: (messages: AssistantMessage[]) =>
       apiFetch<{ reply: string }>('assistant', { method: 'POST', body: JSON.stringify({ messages }) }),
+  },
+  ai: {
+    insights: () => apiFetch<{ data: InsightResponse[] }>('ai/insights'),
   },
 };
 
@@ -238,6 +245,17 @@ export interface CategoryBreakdown {
 export interface AssistantMessage {
   role: 'user' | 'assistant';
   content: string;
+}
+
+export interface InsightResponse {
+  id: number;
+  asset_symbol?: string | null;
+  title: string;
+  summary: string;
+  rationale?: string | null;
+  impact?: string | null;
+  created_at: string;
+  raw_context?: Record<string, unknown> | null;
 }
 
 export interface DashboardOverviewResponse {

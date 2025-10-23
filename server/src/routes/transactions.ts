@@ -1,10 +1,12 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import multer from 'multer';
 import { parse } from 'csv-parse/sync';
 import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
+import { z } from 'zod';
 import db from '../database.js';
+import { logger } from '../logger.js';
 import type { Transaction } from '../types.js';
 
 const uploadDir = join(process.cwd(), 'server', 'uploads');
@@ -13,6 +15,48 @@ if (!existsSync(uploadDir)) {
 }
 
 const upload = multer({ dest: uploadDir });
+
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+const transactionPayloadSchema = z
+  .object({
+    date: z
+      .string()
+      .trim()
+      .regex(dateRegex, { message: 'Data deve estar no formato YYYY-MM-DD' }),
+    description: z.string().trim().min(1).max(160),
+    category: z.string().trim().min(1).max(120),
+    account: z.string().trim().min(1).max(120),
+    type: z.enum(['income', 'expense']),
+    amount: z.coerce
+      .number()
+      .refine((value) => Number.isFinite(value), { message: 'Valor inválido' }),
+    notes: z.string().trim().max(500).optional().nullable(),
+  })
+  .transform((value) => ({
+    ...value,
+    description: value.description.trim(),
+    category: value.category.trim(),
+    account: value.account.trim(),
+    notes: value.notes?.trim() ?? '',
+  }));
+
+const querySchema = z.object({
+  startDate: z
+    .string()
+    .trim()
+    .regex(dateRegex, { message: 'startDate inválida' })
+    .optional(),
+  endDate: z
+    .string()
+    .trim()
+    .regex(dateRegex, { message: 'endDate inválida' })
+    .optional(),
+  type: z.enum(['income', 'expense']).optional(),
+  category: z.string().trim().max(120).optional(),
+  account: z.string().trim().max(120).optional(),
+  search: z.string().trim().max(160).optional(),
+});
 
 const sanitizeCsvContent = (buffer: Buffer) => {
   const rawContent = buffer.toString('utf8');
@@ -25,7 +69,9 @@ const sanitizeCsvContent = (buffer: Buffer) => {
     return true;
   });
 
-  const identifiedHeaderIndex = usefulLines.findIndex((line) => /data.*lançamento/i.test(line) || /data.*contábil/i.test(line));
+  const identifiedHeaderIndex = usefulLines.findIndex(
+    (line) => /data.*lanc/i.test(line) || /data.*cont/i.test(line),
+  );
   if (identifiedHeaderIndex > 0) {
     return usefulLines.slice(identifiedHeaderIndex).join('\n');
   }
@@ -47,13 +93,28 @@ const normalizeRecord = (record: Record<string, string>): Transaction => {
     return Number.isFinite(numeric) ? numeric : 0;
   };
 
-  const date = record['Data'] || record['Data Lançamento'] || record['Data Lancamento'] || record['data'] || record['Date'] || new Date().toISOString().slice(0, 10);
-  const description = record['Descrição'] || record['Descricao'] || record['Título'] || record['Titulo'] || record['description'] || 'Transação importada';
-  const category = record['Categoria'] || record['Categoria detalhada'] || record['category'] || 'Outros';
-  const account = record['Conta'] || record['account'] || record['Conta Origem'] || 'Conta Corrente';
+  const date =
+    record['Data'] ??
+    record['Data Lançamento'] ??
+    record['Data Lancamento'] ??
+    record['data'] ??
+    record['Date'] ??
+    new Date().toISOString().slice(0, 10);
+  const description =
+    record['Descrição'] ??
+    record['Descricao'] ??
+    record['Título'] ??
+    record['Titulo'] ??
+    record['description'] ??
+    'Transação importada';
+  const category =
+    record['Categoria'] ?? record['Categoria detalhada'] ?? record['category'] ?? 'Outros';
+  const account = record['Conta'] ?? record['account'] ?? record['Conta Origem'] ?? 'Conta Corrente';
 
-  const income = parseAmount(record['Entrada(R$)'] || record['Credito'] || record['Credit'] || record['entrada'] || '0');
-  const expense = parseAmount(record['Saída(R$)'] || record['Debito'] || record['Debit'] || record['saida'] || '0');
+  const income =
+    parseAmount(record['Entrada(R$)'] ?? record['Credito'] ?? record['Credit'] ?? record['entrada'] ?? '0');
+  const expense =
+    parseAmount(record['Saída(R$)'] ?? record['Debito'] ?? record['Debit'] ?? record['saida'] ?? '0');
   const amount = income > 0 ? income : -expense;
   const type = income >= expense ? 'income' : 'expense';
 
@@ -64,41 +125,49 @@ const normalizeRecord = (record: Record<string, string>): Transaction => {
     category,
     account,
     type,
-    amount: amount === 0 ? parseAmount(record['Valor'] || record['value'] || '0') : amount,
-    notes: record['Observações'] || record['Observacao'] || record['notes'] || '',
+    amount: amount === 0 ? parseAmount(record['Valor'] ?? record['value'] ?? '0') : amount,
+    notes: record['Observações'] ?? record['Observacao'] ?? record['notes'] ?? '',
   };
 };
 
 export const router = Router();
 
 router.get('/', (req, res) => {
-  const { startDate, endDate, type, category, account, search } = req.query;
+  const validated = querySchema.safeParse(req.query);
+  if (!validated.success) {
+    return res.status(400).json({
+      message: 'Parâmetros de consulta inválidos.',
+      details: validated.error.flatten(),
+    });
+  }
+
+  const { startDate, endDate, type, category, account, search } = validated.data;
   const filters: string[] = [];
   const params: unknown[] = [];
 
-  if (typeof startDate === 'string') {
+  if (startDate) {
     filters.push('date >= ?');
     params.push(startDate);
   }
-  if (typeof endDate === 'string') {
+  if (endDate) {
     filters.push('date <= ?');
     params.push(endDate);
   }
-  if (typeof type === 'string') {
+  if (type) {
     filters.push('type = ?');
     params.push(type);
   }
-  if (typeof category === 'string') {
+  if (category) {
     filters.push('category = ?');
     params.push(category);
   }
-  if (typeof account === 'string') {
+  if (account) {
     filters.push('account = ?');
     params.push(account);
   }
-  if (typeof search === 'string' && search.trim()) {
+  if (search) {
     filters.push('(description LIKE ? OR notes LIKE ?)');
-    params.push(`%${search.trim()}%`, `%${search.trim()}%`);
+    params.push(`%${search}%`, `%${search}%`);
   }
 
   let query = 'SELECT * FROM transactions';
@@ -112,12 +181,14 @@ router.get('/', (req, res) => {
 });
 
 router.get('/summary', (_req, res) => {
-  const totals = db.prepare(
-    `SELECT
+  const totals = db
+    .prepare(
+      `SELECT
       SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS totalIncome,
       SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS totalExpenses
-    FROM transactions`
-  ).get() as { totalIncome: number | null; totalExpenses: number | null };
+    FROM transactions`,
+    )
+    .get() as { totalIncome: number | null; totalExpenses: number | null };
 
   const income = totals.totalIncome ?? 0;
   const expenses = totals.totalExpenses ?? 0;
@@ -127,32 +198,70 @@ router.get('/summary', (_req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { date, description, category, account, type, amount, notes } = req.body;
+  const parsed = transactionPayloadSchema.safeParse(req.body);
 
-  if (!date || !description || !category || !account || !type || typeof amount !== 'number') {
-    return res.status(400).json({ message: 'Dados invalidos para criar transacao.' });
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Dados inválidos para criar transação.',
+      details: parsed.error.flatten(),
+    });
   }
 
+  const payload = parsed.data;
+
   const id = randomUUID();
-  const statement = db.prepare(`INSERT INTO transactions (id, date, description, category, account, type, amount, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
-  statement.run(id, date, description, category, account, type, amount, notes ?? '');
+  const statement = db.prepare(
+    `INSERT INTO transactions (id, date, description, category, account, type, amount, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  statement.run(
+    id,
+    payload.date,
+    payload.description,
+    payload.category,
+    payload.account,
+    payload.type,
+    payload.amount,
+    payload.notes ?? '',
+  );
 
   const transaction = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id) as Transaction;
   res.status(201).json(transaction);
 });
 
 router.put('/:id', (req, res) => {
+  const parsed = transactionPayloadSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Dados inválidos para atualizar transação.',
+      details: parsed.error.flatten(),
+    });
+  }
+
+  const payload = parsed.data;
   const { id } = req.params;
-  const { date, description, category, account, type, amount, notes } = req.body;
   const existing = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id) as Transaction | undefined;
 
   if (!existing) {
-    return res.status(404).json({ message: 'Transacao nao encontrada.' });
+    return res.status(404).json({ message: 'Transação não encontrada.' });
   }
 
-  const statement = db.prepare(`UPDATE transactions SET date = ?, description = ?, category = ?, account = ?, type = ?, amount = ?, notes = ? WHERE id = ?`);
-  statement.run(date, description, category, account, type, amount, notes ?? '', id);
+  const statement = db.prepare(
+    `UPDATE transactions
+     SET date = ?, description = ?, category = ?, account = ?, type = ?, amount = ?, notes = ?
+     WHERE id = ?`,
+  );
+  statement.run(
+    payload.date,
+    payload.description,
+    payload.category,
+    payload.account,
+    payload.type,
+    payload.amount,
+    payload.notes ?? '',
+    id,
+  );
 
   const updated = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id) as Transaction;
   res.json(updated);
@@ -163,20 +272,22 @@ router.delete('/:id', (req, res) => {
   const statement = db.prepare('DELETE FROM transactions WHERE id = ?');
   const result = statement.run(id);
   if (result.changes === 0) {
-    return res.status(404).json({ message: 'Transacao nao encontrada.' });
+    return res.status(404).json({ message: 'Transação não encontrada.' });
   }
   res.status(204).send();
 });
 
 router.post('/import', upload.single('file'), (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ message: 'Arquivo de extrato nao enviado.' });
+    return res.status(400).json({ message: 'Arquivo de extrato não enviado.' });
   }
 
   try {
     const rawContent = sanitizeCsvContent(readFileSync(req.file.path));
     if (!rawContent.trim()) {
-      return res.status(400).json({ message: 'Conteudo do extrato vazio ou nao suportado.' });
+      return res
+        .status(400)
+        .json({ message: 'Conteúdo do extrato vazio ou não suportado.' });
     }
 
     const delimiter = guessDelimiter(rawContent.split(/\r?\n/)[0] ?? ',');
@@ -188,16 +299,24 @@ router.post('/import', upload.single('file'), (req, res) => {
     }) as Record<string, string>[];
 
     if (!records.length) {
-      return res.status(400).json({ message: 'Nao foi possivel interpretar o arquivo. Verifique o formato CSV.' });
+      return res
+        .status(400)
+        .json({ message: 'Não foi possível interpretar o arquivo. Verifique o formato CSV.' });
     }
 
-    const insert = db.prepare(`INSERT INTO transactions (id, date, description, category, account, type, amount, notes)
-      VALUES (@id, @date, @description, @category, @account, @type, @amount, @notes)`);
+    const insert = db.prepare(
+      `INSERT INTO transactions (id, date, description, category, account, type, amount, notes)
+      VALUES (@id, @date, @description, @category, @account, @type, @amount, @notes)`,
+    );
 
-    const normalized = records.map(normalizeRecord).filter((transaction) => transaction.amount !== 0);
+    const normalized = records
+      .map(normalizeRecord)
+      .filter((transaction) => transaction.amount !== 0);
 
     if (!normalized.length) {
-      return res.status(400).json({ message: 'Nenhuma transacao valida encontrada no arquivo.' });
+      return res
+        .status(400)
+        .json({ message: 'Nenhuma transação válida encontrada no arquivo.' });
     }
 
     const insertMany = db.transaction((rows: Transaction[]) => {
@@ -207,11 +326,13 @@ router.post('/import', upload.single('file'), (req, res) => {
 
     const ids = normalized.map((row) => row.id);
     const placeholders = ids.map(() => '?').join(',');
-    const inserted = db.prepare(`SELECT * FROM transactions WHERE id IN (${placeholders})`).all(...ids) as Transaction[];
+    const inserted = db
+      .prepare(`SELECT * FROM transactions WHERE id IN (${placeholders})`)
+      .all(...ids) as Transaction[];
 
     res.status(201).json({ imported: inserted.length, transactions: inserted });
   } catch (error) {
-    console.error('[transactions import] error', error);
+    logger.error({ err: error }, '[transactions import] error');
     res.status(500).json({ message: 'Erro ao importar extrato.' });
   } finally {
     unlinkSync(req.file.path);

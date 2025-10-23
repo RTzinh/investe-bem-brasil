@@ -55,6 +55,38 @@ class GeminiInsightService:
         ).strip()
         return await self._generate_response(prompt, str(portfolio_snapshot))
 
+    async def chat(self, messages: Iterable[object]) -> str:
+        conversation = []
+        snapshot_lines = []
+        for message in messages:
+            role = getattr(message, "role", None)
+            content = getattr(message, "content", "")
+            if not role or not content:
+                continue
+            gemini_role = "model" if role == "assistant" else "user"
+            conversation.append({"role": gemini_role, "parts": [{"text": str(content)}]})
+            snapshot_lines.append(f"{role}: {content}")
+
+        if not conversation:
+            return "Nenhuma mensagem recebida para processar."
+
+        transcript = "\n".join(snapshot_lines)
+
+        if not self._model:
+            return self._fallback("Assistente indisponível.", transcript)
+
+        def _run() -> str:
+            response = self._model.generate_content(conversation)
+            if response and getattr(response, "text", None):
+                return response.text.strip()
+            return ""
+
+        try:
+            reply = await asyncio.to_thread(_run)
+            return reply or self._fallback("Assistente indisponível.", transcript)
+        except Exception:  # noqa: BLE001
+            return self._fallback("Assistente indisponível.", transcript)
+
     async def _generate_response(self, prompt: str, content: str) -> str:
         if not self._model:
             return self._fallback(prompt, content)
