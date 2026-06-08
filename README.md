@@ -2,6 +2,40 @@
 
 A full-stack wealth-management platform that brings financial automation, real-time investment monitoring, and an explainable AI layer together to help investors and advisors make better decisions.
 
+## 🎬 Screenshots
+
+See it in action — the screenshots below were captured from the app running locally via Docker Compose, served from the seeded SQLite database.
+
+### Dashboard
+
+Consolidated financial overview with balances, recent transactions, and the live investment portfolio.
+
+![Dashboard](assets/dashboard.png)
+
+### Transactions
+
+Transaction history with income/expense breakdown, search, and CSV import/export.
+
+![Transactions](assets/transactions.png)
+
+### Investments
+
+Real-time price streaming, portfolio value, allocation by class, and current positions.
+
+![Investments](assets/investments.png)
+
+### Budgets
+
+Spending limits per category with usage progress and alert status.
+
+![Budgets](assets/budgets.png)
+
+### Goals
+
+Savings goals with progress tracking, target amounts, and monthly contributions.
+
+![Goals](assets/goals.png)
+
 ## What It Does
 
 - **Unified dashboard** — transactions, budgets, goals, portfolio and alerts in a single React + Tailwind experience.
