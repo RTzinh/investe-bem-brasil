@@ -64,13 +64,16 @@ const sanitizeCsvContent = (buffer: Buffer) => {
   const usefulLines = lines.filter((line) => {
     const trimmed = line.trim();
     if (!trimmed) return false;
-    if (/^extrato de conta/i.test(trimmed)) return false;
-    if (/^saldo (anterior|atual)/i.test(trimmed)) return false;
+    if (/^(extrato de conta|account statement)/i.test(trimmed)) return false;
+    if (/^(saldo (anterior|atual)|(previous|current) balance)/i.test(trimmed)) return false;
     return true;
   });
 
   const identifiedHeaderIndex = usefulLines.findIndex(
-    (line) => /data.*lanc/i.test(line) || /data.*cont/i.test(line),
+    (line) =>
+      /data.*lanc/i.test(line) ||
+      /data.*cont/i.test(line) ||
+      /date.*(description|amount|balance)/i.test(line),
   );
   if (identifiedHeaderIndex > 0) {
     return usefulLines.slice(identifiedHeaderIndex).join('\n');
@@ -105,16 +108,17 @@ const normalizeRecord = (record: Record<string, string>): Transaction => {
     record['Descricao'] ??
     record['Título'] ??
     record['Titulo'] ??
+    record['Description'] ??
     record['description'] ??
     'Imported transaction';
   const category =
-    record['Categoria'] ?? record['Categoria detalhada'] ?? record['category'] ?? 'Other';
-  const account = record['Conta'] ?? record['account'] ?? record['Conta Origem'] ?? 'Checking Account';
+    record['Categoria'] ?? record['Categoria detalhada'] ?? record['Category'] ?? record['category'] ?? 'Other';
+  const account = record['Conta'] ?? record['Account'] ?? record['account'] ?? record['Conta Origem'] ?? 'Checking Account';
 
   const income =
-    parseAmount(record['Entrada(R$)'] ?? record['Credito'] ?? record['Credit'] ?? record['entrada'] ?? '0');
+    parseAmount(record['Entrada(R$)'] ?? record['Credito'] ?? record['Credit'] ?? record['Deposit'] ?? record['entrada'] ?? '0');
   const expense =
-    parseAmount(record['Saída(R$)'] ?? record['Debito'] ?? record['Debit'] ?? record['saida'] ?? '0');
+    parseAmount(record['Saída(R$)'] ?? record['Debito'] ?? record['Debit'] ?? record['Withdrawal'] ?? record['saida'] ?? '0');
   const amount = income > 0 ? income : -expense;
   const type = income >= expense ? 'income' : 'expense';
 
@@ -125,8 +129,8 @@ const normalizeRecord = (record: Record<string, string>): Transaction => {
     category,
     account,
     type,
-    amount: amount === 0 ? parseAmount(record['Valor'] ?? record['value'] ?? '0') : amount,
-    notes: record['Observações'] ?? record['Observacao'] ?? record['notes'] ?? '',
+    amount: amount === 0 ? parseAmount(record['Valor'] ?? record['Amount'] ?? record['value'] ?? '0') : amount,
+    notes: record['Observações'] ?? record['Observacao'] ?? record['Notes'] ?? record['notes'] ?? '',
   };
 };
 
