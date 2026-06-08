@@ -151,8 +151,8 @@ class AnalyticsService:
                         asset_symbol=asset.symbol,
                         alert_type=AlertType.price_move,
                         severity=severity,
-                        title=f"Variacao de {latest_return_pct:.2f}% em {asset.symbol}",
-                        message=f"O ativo {asset.symbol} movimentou {latest_return_pct:.2f}% no ultimo pregao.",
+                        title=f"{latest_return_pct:.2f}% change in {asset.symbol}",
+                        message=f"The asset {asset.symbol} moved {latest_return_pct:.2f}% in the last trading session.",
                         context={
                             "return_pct": latest_return_pct,
                             "threshold_pct": self.settings.anomaly_threshold_pct,
@@ -174,8 +174,8 @@ class AnalyticsService:
                         asset_symbol=asset.symbol,
                         alert_type=AlertType.anomaly,
                         severity=AlertSeverity.info,
-                        title=f"Rompimento de ATR em {asset.symbol}",
-                        message=f"{asset.symbol} rompeu o patamar de preco baseado em ATR.",
+                        title=f"ATR breakout in {asset.symbol}",
+                        message=f"{asset.symbol} broke through the ATR-based price level.",
                         context={"atr": atr, "close": frame['close'].iloc[-1]},
                     )
                 )
@@ -193,8 +193,8 @@ class AnalyticsService:
                             asset_symbol=asset.symbol,
                             alert_type=AlertType.volatility,
                             severity=AlertSeverity.warning,
-                            title=f"Volume anomalo em {asset.symbol}",
-                            message=f"O volume negociado foi {frame['volume'].iloc[-1]:.0f}, acima de {self.settings.volume_spike_multiplier:.1f}x da media.",
+                            title=f"Abnormal volume in {asset.symbol}",
+                            message=f"Traded volume was {frame['volume'].iloc[-1]:.0f}, above {self.settings.volume_spike_multiplier:.1f}x the average.",
                             context={
                                 "volume": frame["volume"].iloc[-1],
                                 "volume_avg": avg_volume,

@@ -36,7 +36,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     } catch {
       payload = await response.text();
     }
-    throw new ApiError(response.statusText || 'Erro na requisição', response.status, payload);
+    throw new ApiError(response.statusText || 'Request error', response.status, payload);
   }
 
   if (response.status === 204) {

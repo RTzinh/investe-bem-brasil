@@ -4,12 +4,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import Transacoes from "./pages/Transacoes";
-import Orcamentos from "./pages/Orcamentos";
-import Metas from "./pages/Metas";
-import Investimentos from "./pages/Investimentos";
-import Relatorios from "./pages/Relatorios";
-import Assistente from "./pages/Assistente";
+import Transactions from "./pages/Transactions";
+import Budgets from "./pages/Budgets";
+import Goals from "./pages/Goals";
+import Investments from "./pages/Investments";
+import Reports from "./pages/Reports";
+import Assistant from "./pages/Assistant";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,12 +22,12 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/transacoes" element={<Transacoes />} />
-          <Route path="/orcamentos" element={<Orcamentos />} />
-          <Route path="/metas" element={<Metas />} />
-          <Route path="/investimentos" element={<Investimentos />} />
-          <Route path="/relatorios" element={<Relatorios />} />
-          <Route path="/assistente" element={<Assistente />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/budgets" element={<Budgets />} />
+          <Route path="/goals" element={<Goals />} />
+          <Route path="/investments" element={<Investments />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/assistant" element={<Assistant />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

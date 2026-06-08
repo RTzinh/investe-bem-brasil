@@ -28,7 +28,7 @@ async def create_insight(
     repo = InsightRepository(session)
     insight = repo.create_insight(
         asset_symbol=payload.asset_symbol,
-        title=f"Insight para {payload.asset_symbol or 'carteira'}",
+        title=f"Insight for {payload.asset_symbol or 'the portfolio'}",
         summary=summary,
         rationale=None,
         impact=None,

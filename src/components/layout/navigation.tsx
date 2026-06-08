@@ -16,35 +16,35 @@ const navigationItems = [
     href: "/", 
     active: true 
   },
-  { 
-    icon: CreditCard, 
-    label: "Transações", 
-    href: "/transacoes" 
+  {
+    icon: CreditCard,
+    label: "Transactions",
+    href: "/transactions"
   },
-  { 
-    icon: PieChart, 
-    label: "Orçamentos", 
-    href: "/orcamentos" 
+  {
+    icon: PieChart,
+    label: "Budgets",
+    href: "/budgets"
   },
-  { 
-    icon: Target, 
-    label: "Metas", 
-    href: "/metas" 
+  {
+    icon: Target,
+    label: "Goals",
+    href: "/goals"
   },
-  { 
-    icon: TrendingUp, 
-    label: "Investimentos", 
-    href: "/investimentos" 
+  {
+    icon: TrendingUp,
+    label: "Investments",
+    href: "/investments"
   },
-  { 
-    icon: BarChart3, 
-    label: "Relatórios", 
-    href: "/relatorios" 
+  {
+    icon: BarChart3,
+    label: "Reports",
+    href: "/reports"
   },
-  { 
-    icon: MessageSquare, 
-    label: "Assistente IA", 
-    href: "/assistente" 
+  {
+    icon: MessageSquare,
+    label: "AI Assistant",
+    href: "/assistant"
   },
 ];
 

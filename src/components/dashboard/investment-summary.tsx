@@ -18,7 +18,7 @@ export function InvestmentSummary() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-lg font-semibold">Carteira de investimentos</CardTitle>
+        <CardTitle className="text-lg font-semibold">Investment portfolio</CardTitle>
         <PieChart className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
@@ -33,18 +33,18 @@ export function InvestmentSummary() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{formatCurrency(totalValue)}</p>
-                <p className="text-xs text-muted-foreground">Patrimonio investido</p>
+                <p className="text-xs text-muted-foreground">Invested assets</p>
               </div>
               <div className="text-right">
                 <p className={`text-lg font-semibold ${totalPerformance >= 0 ? 'text-financial-gain' : 'text-financial-loss'}`}>
                   {totalPerformance >= 0 ? '+' : ''}{formatPercentage(totalPerformance * 100)}
                 </p>
-                <p className="text-xs text-muted-foreground">Rentabilidade ponderada</p>
+                <p className="text-xs text-muted-foreground">Weighted return</p>
               </div>
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-foreground">Alocacao por ativo</p>
+              <p className="text-sm font-medium text-foreground">Allocation by asset</p>
               {investments.map((investment) => {
                 const allocation = totalValue > 0 ? (investment.totalValue / totalValue) * 100 : 0;
                 return (
@@ -66,15 +66,15 @@ export function InvestmentSummary() {
                 );
               })}
               {!investments.length && (
-                <p className="text-sm text-muted-foreground">Nenhum ativo cadastrado. Registre operacoes para iniciar o acompanhamento.</p>
+                <p className="text-sm text-muted-foreground">No assets registered yet. Record trades to start tracking.</p>
               )}
             </div>
 
             <div className="flex items-center justify-between border-t pt-2 text-sm">
-              <span className="text-muted-foreground">Analise sugestoes de alocacao em tempo real</span>
+              <span className="text-muted-foreground">Review real-time allocation suggestions</span>
               <Button asChild variant="link" className="px-0 text-primary">
-                <Link to="/assistente" className="flex items-center">
-                  Ver sugestao IA
+                <Link to="/assistant" className="flex items-center">
+                  See AI suggestion
                   <ArrowRight className="ml-1 h-4 w-4" />
                 </Link>
               </Button>

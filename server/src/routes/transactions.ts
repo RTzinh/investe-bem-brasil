@@ -30,7 +30,7 @@ const transactionPayloadSchema = z
     type: z.enum(['income', 'expense']),
     amount: z.coerce
       .number()
-      .refine((value) => Number.isFinite(value), { message: 'Valor inválido' }),
+      .refine((value) => Number.isFinite(value), { message: 'Invalid amount' }),
     notes: z.string().trim().max(500).optional().nullable(),
   })
   .transform((value) => ({
@@ -45,12 +45,12 @@ const querySchema = z.object({
   startDate: z
     .string()
     .trim()
-    .regex(dateRegex, { message: 'startDate inválida' })
+    .regex(dateRegex, { message: 'Invalid startDate' })
     .optional(),
   endDate: z
     .string()
     .trim()
-    .regex(dateRegex, { message: 'endDate inválida' })
+    .regex(dateRegex, { message: 'Invalid endDate' })
     .optional(),
   type: z.enum(['income', 'expense']).optional(),
   category: z.string().trim().max(120).optional(),
@@ -106,10 +106,10 @@ const normalizeRecord = (record: Record<string, string>): Transaction => {
     record['Título'] ??
     record['Titulo'] ??
     record['description'] ??
-    'Transação importada';
+    'Imported transaction';
   const category =
-    record['Categoria'] ?? record['Categoria detalhada'] ?? record['category'] ?? 'Outros';
-  const account = record['Conta'] ?? record['account'] ?? record['Conta Origem'] ?? 'Conta Corrente';
+    record['Categoria'] ?? record['Categoria detalhada'] ?? record['category'] ?? 'Other';
+  const account = record['Conta'] ?? record['account'] ?? record['Conta Origem'] ?? 'Checking Account';
 
   const income =
     parseAmount(record['Entrada(R$)'] ?? record['Credito'] ?? record['Credit'] ?? record['entrada'] ?? '0');
@@ -136,7 +136,7 @@ router.get('/', (req, res) => {
   const validated = querySchema.safeParse(req.query);
   if (!validated.success) {
     return res.status(400).json({
-      message: 'Parâmetros de consulta inválidos.',
+      message: 'Invalid query parameters.',
       details: validated.error.flatten(),
     });
   }
@@ -202,7 +202,7 @@ router.post('/', (req, res) => {
 
   if (!parsed.success) {
     return res.status(400).json({
-      message: 'Dados inválidos para criar transação.',
+      message: 'Invalid data for creating a transaction.',
       details: parsed.error.flatten(),
     });
   }
@@ -234,7 +234,7 @@ router.put('/:id', (req, res) => {
 
   if (!parsed.success) {
     return res.status(400).json({
-      message: 'Dados inválidos para atualizar transação.',
+      message: 'Invalid data for updating a transaction.',
       details: parsed.error.flatten(),
     });
   }
@@ -244,7 +244,7 @@ router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id) as Transaction | undefined;
 
   if (!existing) {
-    return res.status(404).json({ message: 'Transação não encontrada.' });
+    return res.status(404).json({ message: 'Transaction not found.' });
   }
 
   const statement = db.prepare(
@@ -272,14 +272,14 @@ router.delete('/:id', (req, res) => {
   const statement = db.prepare('DELETE FROM transactions WHERE id = ?');
   const result = statement.run(id);
   if (result.changes === 0) {
-    return res.status(404).json({ message: 'Transação não encontrada.' });
+    return res.status(404).json({ message: 'Transaction not found.' });
   }
   res.status(204).send();
 });
 
 router.post('/import', upload.single('file'), (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ message: 'Arquivo de extrato não enviado.' });
+    return res.status(400).json({ message: 'No statement file was uploaded.' });
   }
 
   try {
@@ -287,7 +287,7 @@ router.post('/import', upload.single('file'), (req, res) => {
     if (!rawContent.trim()) {
       return res
         .status(400)
-        .json({ message: 'Conteúdo do extrato vazio ou não suportado.' });
+        .json({ message: 'Statement content is empty or unsupported.' });
     }
 
     const delimiter = guessDelimiter(rawContent.split(/\r?\n/)[0] ?? ',');
@@ -301,7 +301,7 @@ router.post('/import', upload.single('file'), (req, res) => {
     if (!records.length) {
       return res
         .status(400)
-        .json({ message: 'Não foi possível interpretar o arquivo. Verifique o formato CSV.' });
+        .json({ message: 'Unable to parse the file. Check the CSV format.' });
     }
 
     const insert = db.prepare(
@@ -316,7 +316,7 @@ router.post('/import', upload.single('file'), (req, res) => {
     if (!normalized.length) {
       return res
         .status(400)
-        .json({ message: 'Nenhuma transação válida encontrada no arquivo.' });
+        .json({ message: 'No valid transactions found in the file.' });
     }
 
     const insertMany = db.transaction((rows: Transaction[]) => {
@@ -333,7 +333,7 @@ router.post('/import', upload.single('file'), (req, res) => {
     res.status(201).json({ imported: inserted.length, transactions: inserted });
   } catch (error) {
     logger.error({ err: error }, '[transactions import] error');
-    res.status(500).json({ message: 'Erro ao importar extrato.' });
+    res.status(500).json({ message: 'Failed to import the statement.' });
   } finally {
     unlinkSync(req.file.path);
   }

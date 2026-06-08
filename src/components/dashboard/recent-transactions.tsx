@@ -20,17 +20,17 @@ export function RecentTransactions() {
   return (
     <Card>
       <CardHeader className="flex flex-col space-y-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-        <CardTitle className="text-lg font-semibold">Transacoes recentes</CardTitle>
+        <CardTitle className="text-lg font-semibold">Recent transactions</CardTitle>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link to="/transacoes" className="flex items-center">
-              Ver todas
+            <Link to="/transactions" className="flex items-center">
+              View all
               <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/orcamentos" className="flex items-center">
-              Revisar gastos
+            <Link to="/budgets" className="flex items-center">
+              Review spending
               <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
@@ -90,10 +90,10 @@ export function RecentTransactions() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link to={`/transacoes?edit=${transaction.id}`}>Editar</Link>
+                        <Link to={`/transactions?edit=${transaction.id}`}>Edit</Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem>Categorizar</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Excluir</DropdownMenuItem>
+                      <DropdownMenuItem>Categorize</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -103,7 +103,7 @@ export function RecentTransactions() {
 
           {!isLoading && !transactions.length && (
             <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Nenhuma transacao encontrada recentemente.
+              No recent transactions found.
             </div>
           )}
         </div>

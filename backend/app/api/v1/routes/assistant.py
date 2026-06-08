@@ -10,7 +10,7 @@ router = APIRouter()
 @router.post('/', response_model=AssistantChatResponse)
 async def chat_with_assistant(payload: AssistantChatRequest) -> AssistantChatResponse:
     if not payload.messages:
-        raise HTTPException(status_code=400, detail='A conversa nao pode estar vazia.')
+        raise HTTPException(status_code=400, detail='The conversation cannot be empty.')
 
     settings = get_settings()
     service = GeminiInsightService(settings)

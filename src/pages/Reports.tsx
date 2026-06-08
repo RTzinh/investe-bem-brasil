@@ -27,14 +27,14 @@ import {
 } from 'recharts';
 
 const PERIOD_OPTIONS = [
-  { value: '3m', label: 'Últimos 3 meses' },
-  { value: '6m', label: 'Últimos 6 meses' },
-  { value: '12m', label: 'Últimos 12 meses' },
+  { value: '3m', label: 'Last 3 months' },
+  { value: '6m', label: 'Last 6 months' },
+  { value: '12m', label: 'Last 12 months' },
 ];
 
 const COLORS = ['#2563eb', '#f97316', '#22c55e', '#a855f7', '#ec4899', '#0ea5e9'];
 
-export default function Relatorios() {
+export default function Reports() {
   const [period, setPeriod] = useState('6m');
   const [reportType, setReportType] = useState<'fluxo' | 'categorias'>('fluxo');
 
@@ -66,17 +66,17 @@ export default function Relatorios() {
   }, [categories]);
 
   const exportCsv = () => {
-    const header = 'Tipo,Valor\n';
+    const header = 'Type,Amount\n';
     const rows = [
-      ['Receitas', overview.income],
-      ['Despesas', overview.expenses],
-      ['Saldo', overview.balance],
+      ['Income', overview.income],
+      ['Expenses', overview.expenses],
+      ['Balance', overview.balance],
     ];
     const blob = new Blob([header + rows.map((row) => `${row[0]},${row[1]}`).join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `relatorio-${reportType}-${period}.csv`;
+    link.download = `report-${reportType}-${period}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -91,37 +91,37 @@ export default function Relatorios() {
         <main className="flex-1 ml-64 p-6 space-y-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Relatórios</h1>
-              <p className="text-muted-foreground">Insights e tendências das suas finanças pessoais.</p>
+              <h1 className="text-3xl font-bold">Reports</h1>
+              <p className="text-muted-foreground">Insights and trends from your personal finances.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" onClick={exportCsv}>
                 <Download className="mr-2 h-4 w-4" />
-                Exportar CSV
+                Export CSV
               </Button>
             </div>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Filtros</CardTitle>
+              <CardTitle>Filters</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <Label>Tipo de relatório</Label>
+                  <Label>Report type</Label>
                   <Select value={reportType} onValueChange={(value: 'fluxo' | 'categorias') => setReportType(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fluxo">Fluxo de caixa</SelectItem>
-                      <SelectItem value="categorias">Gastos por categoria</SelectItem>
+                      <SelectItem value="fluxo">Cash flow</SelectItem>
+                      <SelectItem value="categorias">Spending by category</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Período</Label>
+                  <Label>Period</Label>
                   <Select value={period} onValueChange={setPeriod}>
                     <SelectTrigger>
                       <SelectValue />
@@ -137,7 +137,7 @@ export default function Relatorios() {
                 </div>
                 <div className="flex items-center gap-2 rounded-md border p-3 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  <span>Atualizado em {new Date().toLocaleDateString('pt-BR')}</span>
+                  <span>Updated on {new Date().toLocaleDateString('pt-BR')}</span>
                 </div>
               </div>
             </CardContent>
@@ -145,20 +145,20 @@ export default function Relatorios() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Resumo do período</CardTitle>
+              <CardTitle>Period summary</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-lg border p-4">
-                  <p className="text-sm text-muted-foreground">Receitas</p>
+                  <p className="text-sm text-muted-foreground">Income</p>
                   {overviewQuery.isLoading ? <Skeleton className="mt-2 h-8 w-24" /> : <p className="text-2xl font-semibold text-financial-gain">{formatCurrency(overview.income)}</p>}
                 </div>
                 <div className="rounded-lg border p-4">
-                  <p className="text-sm text-muted-foreground">Despesas</p>
+                  <p className="text-sm text-muted-foreground">Expenses</p>
                   {overviewQuery.isLoading ? <Skeleton className="mt-2 h-8 w-24" /> : <p className="text-2xl font-semibold text-financial-loss">{formatCurrency(overview.expenses)}</p>}
                 </div>
                 <div className="rounded-lg border p-4">
-                  <p className="text-sm text-muted-foreground">Saldo</p>
+                  <p className="text-sm text-muted-foreground">Balance</p>
                   {overviewQuery.isLoading ? <Skeleton className="mt-2 h-8 w-24" /> : <p className={`text-2xl font-semibold ${overview.balance >= 0 ? 'text-financial-gain' : 'text-financial-loss'}`}>{formatCurrency(overview.balance)}</p>}
                 </div>
               </div>
@@ -168,7 +168,7 @@ export default function Relatorios() {
           {reportType === 'fluxo' ? (
             <Card>
               <CardHeader>
-                <CardTitle>Evolução do fluxo de caixa</CardTitle>
+                <CardTitle>Cash flow trend</CardTitle>
               </CardHeader>
               <CardContent className="h-80">
                 {cashflowQuery.isLoading ? (
@@ -180,14 +180,14 @@ export default function Relatorios() {
                       <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Area type="monotone" dataKey="income" stackId="1" stroke="#22c55e" fill="#22c55e55" name="Receitas" />
-                      <Area type="monotone" dataKey="expenses" stackId="1" stroke="#ef4444" fill="#ef444455" name="Despesas" />
-                      <Area type="monotone" dataKey="balance" stroke="#2563eb" fill="#2563eb40" name="Saldo" />
+                      <Area type="monotone" dataKey="income" stackId="1" stroke="#22c55e" fill="#22c55e55" name="Income" />
+                      <Area type="monotone" dataKey="expenses" stackId="1" stroke="#ef4444" fill="#ef444455" name="Expenses" />
+                      <Area type="monotone" dataKey="balance" stroke="#2563eb" fill="#2563eb40" name="Balance" />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    Nenhum dado encontrado para o período selecionado.
+                    No data found for the selected period.
                   </div>
                 )}
               </CardContent>
@@ -196,7 +196,7 @@ export default function Relatorios() {
             <div className="grid gap-6 lg:grid-cols-2">
               <Card className="h-80">
                 <CardHeader>
-                  <CardTitle>Distribuição de despesas por categoria</CardTitle>
+                  <CardTitle>Expense distribution by category</CardTitle>
                 </CardHeader>
                 <CardContent className="h-full">
                   {categoryQuery.isLoading ? (
@@ -214,14 +214,14 @@ export default function Relatorios() {
                     </ResponsiveContainer>
                   ) : (
                     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                      Nenhuma despesa registrada no período.
+                      No expenses recorded in the period.
                     </div>
                   )}
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle>Maiores categorias</CardTitle>
+                  <CardTitle>Top categories</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {categorySummary.top.map((category, index) => (
@@ -234,7 +234,7 @@ export default function Relatorios() {
                     </div>
                   ))}
                   <div className="rounded-lg border p-3 text-sm text-muted-foreground">
-                    Total gasto: <span className="font-semibold text-foreground">{formatCurrency(categorySummary.total)}</span>
+                    Total spent: <span className="font-semibold text-foreground">{formatCurrency(categorySummary.total)}</span>
                   </div>
                 </CardContent>
               </Card>

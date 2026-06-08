@@ -17,21 +17,21 @@ interface ChatMessage {
 }
 
 const QUICK_ACTIONS = [
-  'Explique Tesouro Selic',
-  'Analise meu perfil de risco',
-  'Sugira alocação equilibrada',
-  'Resumo financeiro do mês',
-  'O que são FIIs?',
-  'Como diversificar minha carteira?'
+  'Explain Tesouro Selic',
+  'Analyze my risk profile',
+  'Suggest a balanced allocation',
+  'Financial summary for the month',
+  'What are FIIs?',
+  'How do I diversify my portfolio?'
 ];
 
-export default function Assistente() {
+export default function Assistant() {
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'Olá! Sou seu assistente financeiro educacional. Posso explicar conceitos, ajudar com comparações e trazer cenários simulados. Como posso ajudar hoje?'
+      content: 'Hi! I am your educational finance assistant. I can explain concepts, help with comparisons and walk through simulated scenarios. How can I help you today?'
     }
   ]);
   const [input, setInput] = useState('');
@@ -41,8 +41,8 @@ export default function Assistente() {
     onError: (error) => {
       console.error(error);
       toast({
-        title: 'Não foi possível responder agora',
-        description: 'Verifique sua conexão e tente novamente.',
+        title: 'Unable to respond right now',
+        description: 'Check your connection and try again.',
         variant: 'destructive',
       });
       setMessages((prev) => prev.filter((message) => message.id !== 'typing'));
@@ -53,7 +53,7 @@ export default function Assistente() {
         .concat({
           id: Date.now().toString(),
           role: 'assistant',
-          content: data.reply.trim() || 'Consegui processar sua solicitação, mas não recebi detalhes suficientes. Poderia reformular a pergunta?'
+          content: data.reply.trim() || 'I processed your request but did not get enough detail. Could you rephrase the question?'
         }));
     },
   });
@@ -68,7 +68,7 @@ export default function Assistente() {
       content: trimmed,
     };
 
-    setMessages((prev) => [...prev, userMessage, { id: 'typing', role: 'assistant', content: 'Digitando…' }]);
+    setMessages((prev) => [...prev, userMessage, { id: 'typing', role: 'assistant', content: 'Typing…' }]);
     setInput('');
 
     const payload = [...messages, userMessage]
@@ -88,11 +88,11 @@ export default function Assistente() {
             <div className="text-center space-y-2">
               <h1 className="flex items-center justify-center space-x-2 text-3xl font-bold">
                 <Brain className="h-8 w-8 text-primary" />
-                <span>Assistente IA Financeiro</span>
+                <span>Financial AI Assistant</span>
               </h1>
-              <p className="text-muted-foreground">Conteúdo educacional em linguagem simples para apoiar suas decisões.</p>
+              <p className="text-muted-foreground">Educational content in plain language to support your decisions.</p>
               <Badge variant="outline" className="border-warning bg-warning/10 text-warning">
-                <AlertTriangle className="mr-1 h-3 w-3" /> Conteúdo Educacional (não é recomendação)
+                <AlertTriangle className="mr-1 h-3 w-3" /> Educational Content (not investment advice)
               </Badge>
             </div>
 
@@ -106,7 +106,7 @@ export default function Assistente() {
 
             <Card className="flex h-[460px] flex-col">
               <CardHeader>
-                <CardTitle>Conversa</CardTitle>
+                <CardTitle>Conversation</CardTitle>
               </CardHeader>
               <CardContent className="flex-1 space-y-4 overflow-y-auto pr-2">
                 {messages.map((message) => (
@@ -122,7 +122,7 @@ export default function Assistente() {
                   <Input
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder="Digite sua pergunta..."
+                    placeholder="Type your question..."
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') {
                         event.preventDefault();

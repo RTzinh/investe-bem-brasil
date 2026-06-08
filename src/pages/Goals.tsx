@@ -25,20 +25,20 @@ import { formatCurrency, formatDate, parseFormattedCurrency } from '@/lib/format
 import { api, GoalPayload, GoalResponse } from '@/lib/api';
 
 const GOAL_CATEGORIES = [
-  'Emergencia',
-  'Lazer',
-  'Equipamentos',
-  'Imovel',
-  'Educacao',
-  'Saude',
-  'Investimentos',
-  'Outros',
+  'Emergency',
+  'Leisure',
+  'Equipment',
+  'Real Estate',
+  'Education',
+  'Health',
+  'Investments',
+  'Other',
 ];
 
 const PRIORITY_OPTIONS = [
-  { value: 'alta', label: 'Alta', badge: 'destructive' as const },
-  { value: 'media', label: 'Media', badge: 'default' as const },
-  { value: 'baixa', label: 'Baixa', badge: 'secondary' as const },
+  { value: 'alta', label: 'High', badge: 'destructive' as const },
+  { value: 'media', label: 'Medium', badge: 'default' as const },
+  { value: 'baixa', label: 'Low', badge: 'secondary' as const },
 ];
 
 const INITIAL_GOAL_FORM = {
@@ -64,7 +64,7 @@ const goalToPayload = (goal: GoalResponse, overrides?: Partial<GoalPayload>): Go
   ...overrides,
 });
 
-export default function Metas() {
+export default function Goals() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [goalForm, setGoalForm] = useState(INITIAL_GOAL_FORM);
@@ -99,13 +99,13 @@ export default function Metas() {
       queryClient.invalidateQueries({ queryKey: ['goals'] });
       queryClient.invalidateQueries({ queryKey: ['goals', 'summary'] });
       setGoalForm(INITIAL_GOAL_FORM);
-      toast({ title: 'Meta criada', description: 'Acompanhamento iniciado com sucesso.' });
+      toast({ title: 'Goal created', description: 'Tracking started successfully.' });
     },
     onError: (error) => {
       console.error(error);
       toast({
-        title: 'Erro ao criar meta',
-        description: 'Verifique os dados informados e tente novamente.',
+        title: 'Failed to create goal',
+        description: 'Check the data provided and try again.',
         variant: 'destructive',
       });
     },
@@ -120,8 +120,8 @@ export default function Metas() {
     onError: (error) => {
       console.error(error);
       toast({
-        title: 'Nao foi possivel atualizar a meta',
-        description: 'Tente novamente em instantes.',
+        title: 'Unable to update the goal',
+        description: 'Please try again in a moment.',
         variant: 'destructive',
       });
     },
@@ -136,8 +136,8 @@ export default function Metas() {
     onError: (error) => {
       console.error(error);
       toast({
-        title: 'Erro ao apagar meta',
-        description: 'Tente novamente.',
+        title: 'Failed to delete goal',
+        description: 'Please try again.',
         variant: 'destructive',
       });
     },
@@ -150,13 +150,13 @@ export default function Metas() {
       queryClient.invalidateQueries({ queryKey: ['goals', 'summary'] });
       setContributionGoal(null);
       setContributionAmount('');
-      toast({ title: 'Contribuicao registrada', description: 'Valor adicionado com sucesso.' });
+      toast({ title: 'Contribution recorded', description: 'Amount added successfully.' });
     },
     onError: (error) => {
       console.error(error);
       toast({
-        title: 'Falha ao registrar contribuicao',
-        description: 'Tente novamente em instantes.',
+        title: 'Failed to record contribution',
+        description: 'Please try again in a moment.',
         variant: 'destructive',
       });
     },
@@ -169,8 +169,8 @@ export default function Metas() {
 
     if (!goalForm.name || !goalForm.category || !goalForm.deadline || targetAmount <= 0) {
       toast({
-        title: 'Campos obrigatorios',
-        description: 'Informe nome, categoria, valor alvo e prazo.',
+        title: 'Required fields',
+        description: 'Provide a name, category, target amount and deadline.',
         variant: 'destructive',
       });
       return;
@@ -195,8 +195,8 @@ export default function Metas() {
     const amount = parseFormattedCurrency(contributionAmount);
     if (amount <= 0) {
       toast({
-        title: 'Valor invalido',
-        description: 'Informe um valor maior que zero.',
+        title: 'Invalid amount',
+        description: 'Enter an amount greater than zero.',
         variant: 'destructive',
       });
       return;
@@ -206,7 +206,7 @@ export default function Metas() {
 
   const handleMarkAsCompleted = (goal: GoalResponse) => {
     if (goal.status === 'completed') {
-      toast({ title: 'Meta ja esta concluida' });
+      toast({ title: 'Goal already completed' });
       return;
     }
     const payload = goalToPayload(goal, {
@@ -214,18 +214,18 @@ export default function Metas() {
       monthly_contribution: goal.monthly_contribution,
     });
     updateGoal.mutate({ id: goal.id, payload });
-    toast({ title: 'Meta concluida', description: 'Valor acumulado atualizado para o alvo.' });
+    toast({ title: 'Goal completed', description: 'Accumulated amount updated to the target.' });
   };
 
   const handleResetProgress = (goal: GoalResponse) => {
     const payload = goalToPayload(goal, { current_amount: 0 });
     updateGoal.mutate({ id: goal.id, payload });
-    toast({ title: 'Progresso reiniciado', description: 'Util para revisar o planejamento.' });
+    toast({ title: 'Progress reset', description: 'Useful for reviewing your plan.' });
   };
 
   const handleRemoveGoal = (goal: GoalResponse) => {
     removeGoal.mutate(goal.id);
-    toast({ title: 'Meta removida', description: `${goal.name} nao aparecera mais na lista.` });
+    toast({ title: 'Goal removed', description: `${goal.name} will no longer appear in the list.` });
   };
 
   const stats = useMemo(() => {
@@ -257,45 +257,45 @@ export default function Metas() {
             <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
               <div className="space-y-2">
                 <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                  <Sparkles className="mr-1 h-3 w-3" /> Progresso medio {(stats.averageProgress * 100).toFixed(1)}%
+                  <Sparkles className="mr-1 h-3 w-3" /> Average progress {(stats.averageProgress * 100).toFixed(1)}%
                 </div>
-                <h1 className="text-2xl font-semibold text-foreground">Planeje e acompanhe seus objetivos</h1>
+                <h1 className="text-2xl font-semibold text-foreground">Plan and track your goals</h1>
                 <p className="max-w-2xl text-sm text-muted-foreground">
-                  Cadastre metas, registre aportes e veja como pequenas contribuicoes mensais aproximam voce do seu objetivo. Utilize o assistente para gerar estrategias personalizadas.
+                  Create goals, log contributions and see how small monthly deposits bring you closer to your target. Use the assistant to generate personalized strategies.
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button asChild>
-                  <Link to="/assistente" className="flex items-center">
-                    Pedir sugestoes ao assistente
+                  <Link to="/assistant" className="flex items-center">
+                    Ask the assistant for suggestions
                     <TrendingUp className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button variant="outline">
-                      <Plus className="mr-2 h-4 w-4" /> Nova meta
+                      <Plus className="mr-2 h-4 w-4" /> New goal
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-lg">
                     <DialogHeader>
-                      <DialogTitle>Registrar meta</DialogTitle>
+                      <DialogTitle>Record goal</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="goal-name">Nome</Label>
+                        <Label htmlFor="goal-name">Name</Label>
                         <Input
                           id="goal-name"
-                          placeholder="Ex.: Reserva de emergencia"
+                          placeholder="e.g. Emergency fund"
                           value={goalForm.name}
                           onChange={(event) => setGoalForm((prev) => ({ ...prev, name: event.target.value }))}
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label>Categoria</Label>
+                        <Label>Category</Label>
                         <Select value={goalForm.category} onValueChange={(value) => setGoalForm((prev) => ({ ...prev, category: value }))}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
+                            <SelectValue placeholder="Select" />
                           </SelectTrigger>
                           <SelectContent>
                             {GOAL_CATEGORIES.map((category) => (
@@ -308,7 +308,7 @@ export default function Metas() {
                       </div>
                       <div className="grid gap-2 md:grid-cols-2">
                         <div>
-                          <Label htmlFor="target-amount">Valor alvo (R$)</Label>
+                          <Label htmlFor="target-amount">Target amount (R$)</Label>
                           <Input
                             id="target-amount"
                             placeholder="50.000,00"
@@ -317,7 +317,7 @@ export default function Metas() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="current-amount">Ja acumulado (R$)</Label>
+                          <Label htmlFor="current-amount">Already saved (R$)</Label>
                           <Input
                             id="current-amount"
                             placeholder="5.000,00"
@@ -328,7 +328,7 @@ export default function Metas() {
                       </div>
                       <div className="grid gap-2 md:grid-cols-2">
                         <div>
-                          <Label htmlFor="monthly">Aporte mensal (R$)</Label>
+                          <Label htmlFor="monthly">Monthly contribution (R$)</Label>
                           <Input
                             id="monthly"
                             placeholder="1.000,00"
@@ -337,7 +337,7 @@ export default function Metas() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="deadline">Prazo</Label>
+                          <Label htmlFor="deadline">Deadline</Label>
                           <Input
                             id="deadline"
                             type="date"
@@ -347,7 +347,7 @@ export default function Metas() {
                         </div>
                       </div>
                       <div className="grid gap-2">
-                        <Label>Prioridade</Label>
+                        <Label>Priority</Label>
                         <Select value={goalForm.priority} onValueChange={(value: GoalPayload['priority']) => setGoalForm((prev) => ({ ...prev, priority: value }))}>
                           <SelectTrigger>
                             <SelectValue />
@@ -362,17 +362,17 @@ export default function Metas() {
                         </Select>
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="notes">Observacoes</Label>
+                        <Label htmlFor="notes">Notes</Label>
                         <Textarea
                           id="notes"
-                          placeholder="Detalhes adicionais sobre esta meta"
+                          placeholder="Additional details about this goal"
                           rows={2}
                           value={goalForm.notes}
                           onChange={(event) => setGoalForm((prev) => ({ ...prev, notes: event.target.value }))}
                         />
                       </div>
                       <Button onClick={handleCreateGoal} disabled={createGoal.isPending} className="w-full">
-                        {createGoal.isPending ? 'Registrando...' : 'Criar meta'}
+                        {createGoal.isPending ? 'Recording...' : 'Create goal'}
                       </Button>
                     </div>
                   </DialogContent>
@@ -384,13 +384,13 @@ export default function Metas() {
           {hasError && (
             <Card className="border-destructive bg-destructive/5">
               <CardContent className="flex items-center justify-between p-4 text-sm text-destructive">
-                <span>Ocorreu um erro ao carregar as metas. Confirme se o backend esta ativo.</span>
+                <span>Something went wrong while loading goals. Make sure the backend is running.</span>
                 <Button variant="outline" size="sm" onClick={() => {
                   queryClient.invalidateQueries({ queryKey: ['goals'] });
                   queryClient.invalidateQueries({ queryKey: ['goals', 'summary'] });
                 }}>
                   <RefreshCcw className="mr-2 h-4 w-4" />
-                  Tentar novamente
+                  Try again
                 </Button>
               </CardContent>
             </Card>
@@ -399,7 +399,7 @@ export default function Metas() {
           <div className="grid gap-6 lg:grid-cols-5">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total planejado</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total planned</CardTitle>
               </CardHeader>
               <CardContent>
                 {summaryQuery.isLoading ? <Skeleton className="h-8 w-32" /> : <p className="text-2xl font-bold">{formatCurrency(summary.totalTarget)}</p>}
@@ -407,7 +407,7 @@ export default function Metas() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total poupado</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total saved</CardTitle>
               </CardHeader>
               <CardContent>
                 {summaryQuery.isLoading ? <Skeleton className="h-8 w-32" /> : <p className="text-2xl font-bold text-financial-gain">{formatCurrency(summary.totalCurrent)}</p>}
@@ -415,7 +415,7 @@ export default function Metas() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Metas concluidas</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Goals completed</CardTitle>
               </CardHeader>
               <CardContent>
                 {summaryQuery.isLoading ? <Skeleton className="h-8 w-16" /> : <p className="text-2xl font-bold text-primary">{summary.completed}</p>}
@@ -423,7 +423,7 @@ export default function Metas() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">No cronograma</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">On track</CardTitle>
               </CardHeader>
               <CardContent>
                 {summaryQuery.isLoading ? <Skeleton className="h-8 w-16" /> : <p className="text-2xl font-bold text-financial-gain">{summary.onTrack}</p>}
@@ -431,7 +431,7 @@ export default function Metas() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Metas atrasadas</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Goals behind schedule</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoading ? <Skeleton className="h-8 w-16" /> : <p className="text-2xl font-bold text-warning">{stats.delayedGoals}</p>}
@@ -461,25 +461,25 @@ export default function Metas() {
                       <div className="flex flex-col items-end space-y-2">
                         <Badge variant={priorityInfo.badge}>{priorityInfo.label}</Badge>
                         {goal.status === 'completed' && (
-                          <Badge variant="default" className="bg-financial-gain">Concluida</Badge>
+                          <Badge variant="default" className="bg-financial-gain">Completed</Badge>
                         )}
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm text-muted-foreground">Acumulado</p>
+                          <p className="text-sm text-muted-foreground">Saved</p>
                           <p className="text-xl font-bold">{formatCurrency(goal.current_amount)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Meta</p>
+                          <p className="text-sm text-muted-foreground">Target</p>
                           <p className="text-xl font-bold">{formatCurrency(goal.target_amount)}</p>
                         </div>
                       </div>
 
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>Progresso</span>
+                          <span>Progress</span>
                           <span className="font-medium">{progressPercent.toFixed(1)}%</span>
                         </div>
                         <Progress value={progressPercent} className="h-3" />
@@ -489,14 +489,14 @@ export default function Metas() {
                         <div className="flex items-center space-x-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <p className="text-muted-foreground">Prazo</p>
+                            <p className="text-muted-foreground">Deadline</p>
                             <p className="font-medium">{formatDate(goal.deadline)}</p>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <p className="text-muted-foreground">Aporte mensal</p>
+                            <p className="text-muted-foreground">Monthly contribution</p>
                             <p className="font-medium">{formatCurrency(goal.monthly_contribution)}</p>
                           </div>
                         </div>
@@ -504,21 +504,21 @@ export default function Metas() {
 
                       {goal.notes && (
                         <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
-                          Observacoes: {goal.notes}
+                          Notes: {goal.notes}
                         </div>
                       )}
 
                       <div className="flex flex-wrap items-center gap-2">
                         {goal.status !== 'completed' && (
                           <Button size="sm" variant="outline" onClick={() => handleMarkAsCompleted(goal)}>
-                            <CheckCircle2 className="mr-2 h-4 w-4" /> Concluir meta
+                            <CheckCircle2 className="mr-2 h-4 w-4" /> Complete goal
                           </Button>
                         )}
                         <Button size="sm" variant="ghost" onClick={() => handleResetProgress(goal)}>
-                          <RefreshCcw className="mr-2 h-4 w-4" /> Reiniciar progresso
+                          <RefreshCcw className="mr-2 h-4 w-4" /> Reset progress
                         </Button>
                         <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleRemoveGoal(goal)}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Remover
+                          <Trash2 className="mr-2 h-4 w-4" /> Remove
                         </Button>
                         <Dialog
                           open={contributionGoal?.id === goal.id}
@@ -529,16 +529,16 @@ export default function Metas() {
                         >
                           <DialogTrigger asChild>
                             <Button size="sm" variant="default">
-                              <TrendingUp className="mr-2 h-4 w-4" /> Contribuir
+                              <TrendingUp className="mr-2 h-4 w-4" /> Contribute
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Adicionar contribuicao</DialogTitle>
+                              <DialogTitle>Add contribution</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4">
                               <div className="grid gap-2">
-                                <Label htmlFor="contribution">Valor (R$)</Label>
+                                <Label htmlFor="contribution">Amount (R$)</Label>
                                 <Input
                                   id="contribution"
                                   placeholder="500,00"
@@ -547,7 +547,7 @@ export default function Metas() {
                                 />
                               </div>
                               <Button onClick={handleContribute} disabled={contributeGoal.isPending} className="w-full">
-                                {contributeGoal.isPending ? 'Registrando...' : 'Confirmar'}
+                                {contributeGoal.isPending ? 'Recording...' : 'Confirm'}
                               </Button>
                             </div>
                           </DialogContent>
@@ -562,7 +562,7 @@ export default function Metas() {
                 <Card className="md:col-span-2 border-dashed">
                   <CardContent className="flex h-32 flex-col items-center justify-center space-y-2 text-center text-muted-foreground">
                     <Target className="h-6 w-6" />
-                    <p>Nenhuma meta cadastrada ainda. Utilize os botoes acima para iniciar uma meta.</p>
+                    <p>No goals created yet. Use the buttons above to start a goal.</p>
                   </CardContent>
                 </Card>
               )}

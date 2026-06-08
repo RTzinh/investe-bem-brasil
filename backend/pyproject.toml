@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "investe-bem-brasil-backend"
 version = "0.1.0"
-description = "Backend FastAPI para monitoramento inteligente de carteira Investe Bem Brasil."
+description = "FastAPI backend for intelligent portfolio monitoring in Investe Bem Brasil."
 authors = [{name = "Investe Bem Brasil"}]
 requires-python = ">=3.11"
 dependencies = [

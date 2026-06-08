@@ -19,7 +19,7 @@ export function Header() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-foreground">FinanceIA</h1>
-            <p className="text-xs text-muted-foreground">Finanças Inteligentes</p>
+            <p className="text-xs text-muted-foreground">Smart Finance</p>
           </div>
         </div>
 
@@ -36,18 +36,18 @@ export function Header() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
-                Configurações
+                Settings
               </DropdownMenuItem>
               <DropdownMenuItem>
-                Perfil de Risco
+                Risk Profile
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive">
-                Sair
+                Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

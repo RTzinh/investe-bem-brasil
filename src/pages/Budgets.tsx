@@ -38,27 +38,27 @@ const INITIAL_FORM = {
 };
 
 const CATEGORIES = [
-  'Alimentação',
-  'Moradia',
-  'Transporte',
-  'Saúde',
-  'Lazer',
-  'Educação',
-  'Seguros',
-  'Impostos',
-  'Outros',
+  'Food',
+  'Housing',
+  'Transport',
+  'Health',
+  'Leisure',
+  'Education',
+  'Insurance',
+  'Taxes',
+  'Other',
 ];
 
 const PERIODS = [
-  { value: 'mensal', label: 'Mensal' },
-  { value: 'trimestral', label: 'Trimestral' },
-  { value: 'anual', label: 'Anual' },
+  { value: 'mensal', label: 'Monthly' },
+  { value: 'trimestral', label: 'Quarterly' },
+  { value: 'anual', label: 'Annual' },
 ];
 
 const getBudgetStatus = (budget: BudgetResponse) => {
-  if (budget.usage >= 1) return { status: 'exceeded', color: 'destructive', label: 'Excedido' };
-  if (budget.usage >= 0.8) return { status: 'warning', color: 'secondary', label: 'Atenção' };
-  return { status: 'good', color: 'default', label: 'Saudável' };
+  if (budget.usage >= 1) return { status: 'exceeded', color: 'destructive', label: 'Exceeded' };
+  if (budget.usage >= 0.8) return { status: 'warning', color: 'secondary', label: 'Attention' };
+  return { status: 'good', color: 'default', label: 'Healthy' };
 };
 
 const getStatusIcon = (status: string) => {
@@ -74,7 +74,7 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-export default function Orcamentos() {
+export default function Budgets() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [form, setForm] = useState(INITIAL_FORM);
@@ -105,15 +105,15 @@ export default function Orcamentos() {
       queryClient.invalidateQueries({ queryKey: ['budgets', 'summary'] });
       setForm(INITIAL_FORM);
       toast({
-        title: 'Orçamento criado',
-        description: 'A categoria foi configurada com sucesso.',
+        title: 'Budget created',
+        description: 'The category was configured successfully.',
       });
     },
     onError: (error) => {
       console.error(error);
       toast({
-        title: 'Erro ao criar orçamento',
-        description: 'Verifique os dados e tente novamente.',
+        title: 'Failed to create budget',
+        description: 'Check the data and try again.',
         variant: 'destructive',
       });
     },
@@ -123,8 +123,8 @@ export default function Orcamentos() {
     const limitValue = parseFormattedCurrency(form.limit);
     if (!form.name || !form.category || limitValue <= 0) {
       toast({
-        title: 'Campos obrigatórios',
-        description: 'Informe nome, categoria e limite do orçamento.',
+        title: 'Required fields',
+        description: 'Provide a name, category and budget limit.',
         variant: 'destructive',
       });
       return;
@@ -149,35 +149,35 @@ export default function Orcamentos() {
         <main className="flex-1 ml-64 p-6 space-y-8 animate-fade-in">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Orçamentos</h1>
-              <p className="text-muted-foreground">Monitore limites de gastos e identifique categorias críticas.</p>
+              <h1 className="text-3xl font-bold tracking-tight">Budgets</h1>
+              <p className="text-muted-foreground">Track spending limits and spot critical categories.</p>
             </div>
             <Dialog>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
-                  Novo orçamento
+                  New budget
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>Criar orçamento</DialogTitle>
+                  <DialogTitle>Create budget</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="name">Nome</Label>
+                    <Label htmlFor="name">Name</Label>
                     <Input
                       id="name"
-                      placeholder="Ex.: Alimentação família"
+                      placeholder="e.g. Family groceries"
                       value={form.name}
                       onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label>Categoria</Label>
+                    <Label>Category</Label>
                     <Select value={form.category} onValueChange={(value) => setForm((prev) => ({ ...prev, category: value }))}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
+                        <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
                         {dynamicCategories.map((category) => (
@@ -189,7 +189,7 @@ export default function Orcamentos() {
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="limit">Limite mensal (R$)</Label>
+                    <Label htmlFor="limit">Monthly limit (R$)</Label>
                     <Input
                       id="limit"
                       placeholder="1.500,00"
@@ -198,7 +198,7 @@ export default function Orcamentos() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label>Período</Label>
+                    <Label>Period</Label>
                     <Select value={form.period} onValueChange={(value) => setForm((prev) => ({ ...prev, period: value }))}>
                       <SelectTrigger>
                         <SelectValue />
@@ -213,17 +213,17 @@ export default function Orcamentos() {
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="notes">Observações</Label>
+                    <Label htmlFor="notes">Notes</Label>
                     <Textarea
                       id="notes"
-                      placeholder="Detalhes adicionais sobre este orçamento"
+                      placeholder="Additional details about this budget"
                       rows={2}
                       value={form.notes}
                       onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
                     />
                   </div>
                   <Button onClick={handleCreateBudget} disabled={createBudget.isPending} className="w-full">
-                    {createBudget.isPending ? 'Salvando...' : 'Criar orçamento'}
+                    {createBudget.isPending ? 'Saving...' : 'Create budget'}
                   </Button>
                 </div>
               </DialogContent>
@@ -233,7 +233,7 @@ export default function Orcamentos() {
           <div className="grid gap-6 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Orçamento total</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total budget</CardTitle>
               </CardHeader>
               <CardContent>
                 {summaryQuery.isLoading ? <Skeleton className="h-8 w-32" /> : <p className="text-2xl font-bold">{formatCurrency(summary.totalLimit)}</p>}
@@ -241,7 +241,7 @@ export default function Orcamentos() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Gasto total</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total spent</CardTitle>
               </CardHeader>
               <CardContent>
                 {summaryQuery.isLoading ? <Skeleton className="h-8 w-32" /> : <p className="text-2xl font-bold text-financial-loss">{formatCurrency(summary.totalSpent)}</p>}
@@ -249,7 +249,7 @@ export default function Orcamentos() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Restante</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Remaining</CardTitle>
               </CardHeader>
               <CardContent>
                 {summaryQuery.isLoading ? (
@@ -263,7 +263,7 @@ export default function Orcamentos() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Alertas</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Alerts</CardTitle>
               </CardHeader>
               <CardContent>
                 {summaryQuery.isLoading ? <Skeleton className="h-8 w-16" /> : <p className="text-2xl font-bold text-warning">{summary.exceeded + summary.warning}</p>}
@@ -276,19 +276,19 @@ export default function Orcamentos() {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2 text-warning">
                   <AlertTriangle className="h-5 w-5" />
-                  <span>Alertas de orçamento</span>
+                  <span>Budget alerts</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 text-sm">
                   {summary.exceeded > 0 && (
                     <p>
-                      <span className="font-medium">{summary.exceeded}</span> categoria(s) excederam o limite previsto.
+                      <span className="font-medium">{summary.exceeded}</span> category(ies) exceeded the planned limit.
                     </p>
                   )}
                   {summary.warning > 0 && (
                     <p>
-                      <span className="font-medium">{summary.warning}</span> estão acima de 80% do limite.
+                      <span className="font-medium">{summary.warning}</span> are above 80% of the limit.
                     </p>
                   )}
                 </div>
@@ -321,18 +321,18 @@ export default function Orcamentos() {
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm text-muted-foreground">Gasto</p>
+                          <p className="text-sm text-muted-foreground">Spent</p>
                           <p className="text-xl font-bold">{formatCurrency(budget.spent)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Limite</p>
+                          <p className="text-sm text-muted-foreground">Limit</p>
                           <p className="text-xl font-bold">{formatCurrency(budget.limit)}</p>
                         </div>
                       </div>
 
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>Progresso</span>
+                          <span>Progress</span>
                           <span className={percentage > 100 ? 'text-destructive font-medium' : ''}>
                             {percentage.toFixed(1)}%
                           </span>
@@ -341,7 +341,7 @@ export default function Orcamentos() {
                       </div>
 
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Restante:</span>
+                        <span className="text-muted-foreground">Remaining:</span>
                         <span className={`font-medium ${remaining >= 0 ? 'text-financial-gain' : 'text-financial-loss'}`}>
                           {formatCurrency(remaining)}
                         </span>
@@ -353,8 +353,8 @@ export default function Orcamentos() {
               {!budgets.length && (
                 <Card className="md:col-span-2 border-dashed">
                   <CardContent className="flex h-32 flex-col items-center justify-center space-y-2 text-center text-muted-foreground">
-                    <p>Nenhum orçamento cadastrado para o período selecionado.</p>
-                    <p>Comece adicionando um orçamento para acompanhar seus gastos.</p>
+                    <p>No budgets registered for the selected period.</p>
+                    <p>Start by adding a budget to track your spending.</p>
                   </CardContent>
                 </Card>
               )}

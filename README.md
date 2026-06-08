@@ -1,48 +1,48 @@
 # Investe Bem Brasil
 
-Plataforma de inteligencia patrimonial que combina automacao financeira, monitoramento de investimentos em tempo real e uma camada de IA explicavel para apoiar decisoes de investidores e consultores.
+A full-stack wealth-management platform that brings financial automation, real-time investment monitoring, and an explainable AI layer together to help investors and advisors make better decisions.
 
-## Visao Geral
+## What It Does
 
-- **Dashboard unificado**: transacoes, orcamentos, metas, carteira e alertas em uma unica experiencia React + Tailwind.
-- **Backends especializados**  
-  - **Express + SQLite** (Node.js) para operacoes transacionais, streaming via Socket.IO e autenticacao por chave.  
-  - **FastAPI + SQLModel** (Python) para monitoramento inteligente, metricas quantitativas e insights Gemini.
-- **IA explicavel**: chat financeiro com fallback educacional, insights automaticos e explicacao de alertas.
-- **Seguranca embutida**: rate limiting, validacao com Zod, logging estruturado (Pino) e proxy seguro para o servico de IA.
+- **Unified dashboard** — transactions, budgets, goals, portfolio and alerts in a single React + Tailwind experience.
+- **Specialized backends**
+  - **Express + SQLite** (Node.js) for transactional operations, Socket.IO streaming and API-key authentication.
+  - **FastAPI + SQLModel** (Python) for intelligent monitoring, quantitative metrics and Gemini-powered insights.
+- **Explainable AI** — a finance chat with an educational fallback, automatic insights and alert explanations.
+- **Security built in** — rate limiting, Zod validation, structured logging (Pino) and a secure proxy in front of the AI service.
 
-## Arquitetura em Alto Nivel
+## Key Capabilities
 
-| Camada | Tecnologias | Responsabilidades |
-| ------ | ------------ | ----------------- |
-| Front-end | Vite, React 18, TypeScript, shadcn/ui, React Query | UI responsiva, orquestracao de dados, integracao com Socket.IO |
-| API Express | Express 5, better-sqlite3, Socket.IO, Zod | CRUDs financeiros, importacao CSV, autenticacao via API Key, streaming de carteira |
-| API FastAPI | FastAPI, SQLModel, Pandas, Gemini | Coleta de mercado, metricas quantitativas, rebalanceamento e insights de IA |
-| Persistencia | SQLite compartilhado (`backend/app/db/investebem.db`) | Dados transacionais e de monitoramento em um unico arquivo (WAL ativo) |
+- Financial dashboard with a consolidated view of income, expenses, goals and portfolio.
+- CSV statement import with automatic sanitization.
+- Budgets, goals and investments with status calculation, history and alerts.
+- Price streaming (Socket.IO) synchronized with real FastAPI metrics.
+- AI insights and a finance chat powered by Google Gemini through the Python backend.
 
-## Principais Capacidades
+## Tech Stack
 
-- Dashboard financeiro com visao de receitas, despesas, metas e carteira consolidada.
-- Importacao de extratos CSV com sanitizacao automatica.
-- Orcamentos, metas e investimentos com calculo de status, historicos e alertas.
-- Streaming de precos (Socket.IO) sincronizado com metricas reais do FastAPI.
-- Insights de IA e chat financeiro utilizando Google Gemini via backend Python.
+| Layer | Technologies | Responsibilities |
+| ----- | ------------ | ---------------- |
+| Front end | Vite, React 18, TypeScript, shadcn/ui, React Query | Responsive UI, data orchestration, Socket.IO integration |
+| Express API | Express 5, better-sqlite3, Socket.IO, Zod | Financial CRUDs, CSV import, API-key authentication, portfolio streaming |
+| FastAPI API | FastAPI, SQLModel, Pandas, Gemini | Market data collection, quantitative metrics, rebalancing and AI insights |
+| Persistence | Shared SQLite (`backend/app/db/investebem.db`) | Transactional and monitoring data in a single file (WAL enabled) |
 
-## Seguranca Operacional
+## Operational Security
 
-- Toda rota Express exige `x-api-key` (ou `Authorization: Bearer`) usando `SERVER_API_KEY`.
-- Rate limiting (120 req/min) e Helmet habilitados por padrao.
-- Validacao com Zod para evitar entradas inconsistentes.
-- Logs estruturados com Pino e `pino-pretty` em modo desenvolvimento.
-- O front nunca acessa o Gemini diretamente; tudo passa pelo proxy seguro.
+- Every Express route requires `x-api-key` (or `Authorization: Bearer`) using `SERVER_API_KEY`.
+- Rate limiting (120 req/min) and Helmet are enabled by default.
+- Zod validation prevents inconsistent input.
+- Structured logs with Pino and `pino-pretty` in development mode.
+- The front end never reaches Gemini directly; everything goes through the secure proxy.
 
-## Requisitos
+## Requirements
 
-- Node.js >= 18 e npm >= 9  
-- Python >= 3.11  
-- (Opcional) Docker e Docker Compose
+- Node.js >= 18 and npm >= 9
+- Python >= 3.11
+- (Optional) Docker and Docker Compose
 
-## Configuracao Rapida
+## Quick Setup
 
 ```bash
 npm install
@@ -51,23 +51,23 @@ cp server/.env.example server/.env
 cp backend/.env.example backend/.env
 ```
 
-1. Defina uma chave segura (>=16 caracteres) para `SERVER_API_KEY` e replique em `VITE_SERVER_API_KEY`.
-2. Ajuste `SQLITE_PATH` caso queira armazenar o banco em outro local.
-3. Preencha `GEMINI_API_KEY` no `.env` do FastAPI para habilitar IA.
+1. Set a secure key (>= 16 characters) for `SERVER_API_KEY` and mirror it in `VITE_SERVER_API_KEY`.
+2. Adjust `SQLITE_PATH` if you want to store the database somewhere else.
+3. Fill in `GEMINI_API_KEY` in the FastAPI `.env` to enable AI features.
 
-### Variaveis relevantes
+### Relevant variables
 
-| Variavel | Contexto | Descricao |
-| -------- | -------- | --------- |
-| `SERVER_API_KEY` | Express | Chave obrigatoria para todas as rotas (enviada via `x-api-key`). |
-| `VITE_SERVER_API_KEY` | Front-end | Usada para popular o cabecalho automaticamente. |
-| `VITE_API_URL` / `VITE_SOCKET_URL` | Front-end | Endpoints para REST e Socket.IO (padrao `http://localhost:4000`). |
-| `FASTAPI_BASE_URL` | Express | URL para delegar chamadas inteligentes (`http://localhost:8000/api/v1`). |
-| `GEMINI_API_KEY` | FastAPI | Chave do Google Gemini utilizada nos fluxos de IA. |
+| Variable | Context | Description |
+| -------- | ------- | ----------- |
+| `SERVER_API_KEY` | Express | Required key for every route (sent via `x-api-key`). |
+| `VITE_SERVER_API_KEY` | Front end | Used to populate the header automatically. |
+| `VITE_API_URL` / `VITE_SOCKET_URL` | Front end | Endpoints for REST and Socket.IO (default `http://localhost:4000`). |
+| `FASTAPI_BASE_URL` | Express | URL used to delegate intelligent calls (`http://localhost:8000/api/v1`). |
+| `GEMINI_API_KEY` | FastAPI | Google Gemini key used in the AI flows. |
 
-## Execucao Local
+## Running Locally
 
-### Backend FastAPI
+### FastAPI backend
 
 ```bash
 cd backend
@@ -78,80 +78,80 @@ pip install -e .
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Backend Express
+### Express backend
 
 ```bash
 npm run server
 ```
 
-O Express e o FastAPI compartilham o SQLite em `backend/app/db/investebem.db`. Ajuste `SQLITE_PATH` se necessario.
+Express and FastAPI share the SQLite database at `backend/app/db/investebem.db`. Adjust `SQLITE_PATH` if needed.
 
-### Front-end Vite
+### Vite front end
 
 ```bash
 npm run dev
 ```
 
-Interface disponivel em `http://localhost:5173`.
+The interface is available at `http://localhost:5173`.
 
-### Execucao integrada (Docker Compose)
+### Integrated run (Docker Compose)
 
 ```bash
-SERVER_API_KEY=troque-esta-chave docker compose up --build
+SERVER_API_KEY=change-this-key docker compose up --build
 ```
 
-Servicos expostos:
+Exposed services:
 
 - `frontend` -> `http://localhost:5173`
 - `api` (Express + Socket.IO) -> `http://localhost:4000`
 - `fastapi` -> `http://localhost:8000`
 
-`shared-db` e o volume nomeado que sincroniza o SQLite entre os containers.
+`shared-db` is the named volume that syncs SQLite across the containers.
 
-## Acesso a API
+## API Access
 
-Exemplo de chamada autenticada:
+Example of an authenticated call:
 
 ```bash
 curl -H "x-api-key: Rn77sv5rxZMkhHRz" http://localhost:4000/api/transactions
 ```
 
-Sem o cabecalho o servidor responde `{"message":"Unauthorized request"}`.
+Without the header the server responds with `{"message":"Unauthorized request"}`.
 
-Ferramentas uteis:
+Useful tools:
 
-- Postman/Insomnia: configurar `x-api-key` nos cabecalhos.
-- Console do navegador:
+- Postman/Insomnia: set `x-api-key` in the headers.
+- Browser console:
   ```js
   fetch('http://localhost:4000/api/transactions', {
-    headers: { 'x-api-key': 'sua-chave' },
+    headers: { 'x-api-key': 'your-key' },
   }).then(r => r.json()).then(console.log);
   ```
 
-## Qualidade e Observabilidade
+## Quality and Observability
 
-| Comando | Descricao |
-| ------- | --------- |
-| `npm run lint` | ESLint cobrindo front e backend |
-| `npm run test` | Vitest + Supertest com cobertura V8 |
-| `npm run build` | Build de producao do front |
+| Command | Description |
+| ------- | ----------- |
+| `npm run lint` | ESLint covering the front end and backend |
+| `npm run test` | Vitest + Supertest with V8 coverage |
+| `npm run build` | Production build of the front end |
 
-- CI (`.github/workflows/ci.yml`) executa lint, testes e build em pushes/PRs.
-- Rate limiting, Helmet e logs estruturados ativos por padrao.
+- CI (`.github/workflows/ci.yml`) runs lint, tests and build on pushes/PRs.
+- Rate limiting, Helmet and structured logs are active by default.
 
-## Roadmap Sugerido
+## Suggested Roadmap
 
-- Autenticacao por usuario/cliente com controle de permissoes.
-- Observabilidade completa (Prometheus + Grafana) e alarmes.
-- Integracao com provedores Open Finance e APIs bancarias.
-- SDK publico e documentacao de parceiros.
+- Per-user/per-client authentication with permission control.
+- Full observability (Prometheus + Grafana) and alarms.
+- Integration with Open Finance providers and banking APIs.
+- Public SDK and partner documentation.
 
-## Suporte e Contribuicao
+## Support and Contributing
 
-1. Abra uma issue descrevendo contexto, logs e passos para reproduzir.
-2. Antes de enviar PR, execute `npm run lint && npm run test`.
-3. Use os arquivos `.env.example` como referencia de configuracao.
+1. Open an issue describing the context, logs and steps to reproduce.
+2. Before submitting a PR, run `npm run lint && npm run test`.
+3. Use the `.env.example` files as a configuration reference.
 
 ---
 
-Projeto orientado para planejamento financeiro inteligente com foco em auditoria, seguranca e colaboracao entre equipes de tecnologia e investimentos.
+A project geared toward intelligent financial planning, with a focus on auditing, security and collaboration between technology and investment teams.

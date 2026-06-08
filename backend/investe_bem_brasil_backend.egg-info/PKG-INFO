@@ -1,7 +1,7 @@
 Metadata-Version: 2.4
 Name: investe-bem-brasil-backend
 Version: 0.1.0
-Summary: Backend FastAPI para monitoramento inteligente de carteira Investe Bem Brasil.
+Summary: FastAPI backend for intelligent portfolio monitoring in Investe Bem Brasil.
 Author: Investe Bem Brasil
 Requires-Python: >=3.11
 Requires-Dist: fastapi>=0.111.0

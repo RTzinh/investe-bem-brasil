@@ -69,7 +69,7 @@ router.post('/', (req, res) => {
   const parsed = budgetPayloadSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
-      message: 'Dados inválidos para criar orçamento.',
+      message: 'Invalid data for creating a budget.',
       details: parsed.error.flatten(),
     });
   }
@@ -90,7 +90,7 @@ router.put('/:id', (req, res) => {
   const parsed = budgetPayloadSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
-      message: 'Dados inválidos para atualizar orçamento.',
+      message: 'Invalid data for updating a budget.',
       details: parsed.error.flatten(),
     });
   }
@@ -99,7 +99,7 @@ router.put('/:id', (req, res) => {
   const { id } = req.params;
   const existing = db.prepare('SELECT * FROM budgets WHERE id = ?').get(id) as Budget | undefined;
   if (!existing) {
-    return res.status(404).json({ message: 'Orçamento não encontrado.' });
+    return res.status(404).json({ message: 'Budget not found.' });
   }
 
   db.prepare(
@@ -116,8 +116,8 @@ router.delete('/:id', (req, res) => {
   const { id } = req.params;
   const result = db.prepare('DELETE FROM budgets WHERE id = ?').run(id);
   if (result.changes === 0) {
-    logger.warn({ budgetId: id }, 'Tentativa de excluir orçamento inexistente');
-    return res.status(404).json({ message: 'Orçamento não encontrado.' });
+    logger.warn({ budgetId: id }, 'Attempt to delete a non-existent budget');
+    return res.status(404).json({ message: 'Budget not found.' });
   }
   res.status(204).send();
 });

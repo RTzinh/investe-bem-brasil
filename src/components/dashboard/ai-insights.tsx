@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import {
   Brain,
@@ -21,10 +21,10 @@ type InsightTone = 'warning' | 'success' | 'suggestion';
 
 const resolveTone = (insight: InsightResponse): InsightTone => {
   const text = `${insight.summary ?? ''} ${insight.impact ?? ''}`.toLowerCase();
-  if (text.includes('risco') || text.includes('alerta') || text.includes('queda')) {
+  if (text.includes('risk') || text.includes('alert') || text.includes('drop')) {
     return 'warning';
   }
-  if (text.includes('atingiu') || text.includes('conclu') || text.includes('meta')) {
+  if (text.includes('reached') || text.includes('complet') || text.includes('goal')) {
     return 'success';
   }
   return 'suggestion';
@@ -59,7 +59,7 @@ export function AIInsights() {
       return (
         <div className="flex h-32 items-center justify-center text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Carregando insights atualizados...
+          Loading the latest insights...
         </div>
       );
     }
@@ -67,10 +67,10 @@ export function AIInsights() {
     if (insightsQuery.isError) {
       return (
         <div className="flex flex-col items-center justify-center space-y-3 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-          <p>Não foi possível carregar os insights agora.</p>
+          <p>Unable to load insights right now.</p>
           <Button variant="outline" size="sm" onClick={() => insightsQuery.refetch()}>
             <RefreshCw className="mr-2 h-3 w-3" />
-            Tentar novamente
+            Try again
           </Button>
         </div>
       );
@@ -79,8 +79,8 @@ export function AIInsights() {
     if (!insights.length) {
       return (
         <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Nenhum insight gerado até o momento. Mantenha o monitoramento inteligente ativo para receber alertas e
-          recomendações assim que disponíveis.
+          No insights generated yet. Keep smart monitoring active to receive alerts and
+          recommendations as soon as they are available.
         </div>
       );
     }
@@ -116,7 +116,7 @@ export function AIInsights() {
               <div className="pl-8 text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(insight.created_at), {
                   addSuffix: true,
-                  locale: ptBR,
+                  locale: enUS,
                 })}
               </div>
             </div>
@@ -131,23 +131,23 @@ export function AIInsights() {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center space-x-2 text-lg font-semibold">
           <Brain className="h-5 w-5 text-primary" />
-          <span>Insights da IA</span>
+          <span>AI Insights</span>
         </CardTitle>
         <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-          Educacional
+          Educational
         </Badge>
       </CardHeader>
       <CardContent className="space-y-4">
         {renderContent()}
         <div className="border-t pt-4">
           <Button asChild className="w-full">
-            <Link to="/assistente" className="flex items-center justify-center">
+            <Link to="/assistant" className="flex items-center justify-center">
               <Brain className="mr-2 h-4 w-4" />
-              Conversar com assistente IA
+              Chat with the AI assistant
             </Link>
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Conteúdo educacional. Não constitui recomendação de investimento.
+            Educational content. Not investment advice.
           </p>
         </div>
       </CardContent>

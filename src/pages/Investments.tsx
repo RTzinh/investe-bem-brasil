@@ -35,11 +35,11 @@ interface PricePoint {
 }
 
 const ASSET_TYPES = [
-  { value: 'ACAO', label: 'Acao' },
+  { value: 'ACAO', label: 'Stock' },
   { value: 'ETF', label: 'ETF' },
-  { value: 'FII', label: 'FII' },
-  { value: 'RF', label: 'Renda Fixa' },
-  { value: 'CRIPTO', label: 'Cripto' },
+  { value: 'FII', label: 'REIT (FII)' },
+  { value: 'RF', label: 'Fixed Income' },
+  { value: 'CRIPTO', label: 'Crypto' },
 ];
 
 const COLORS = ['#2563eb', '#fb7185', '#f97316', '#22c55e', '#a855f7', '#0ea5e9'];
@@ -62,7 +62,7 @@ const formatTimeLabel = (value: string) =>
     timeZone: 'America/Sao_Paulo',
   });
 
-export default function Investimentos() {
+export default function Investments() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [tradeForm, setTradeForm] = useState(INITIAL_FORM);
@@ -211,13 +211,13 @@ export default function Investimentos() {
       queryClient.invalidateQueries({ queryKey: ['investments'] });
       queryClient.invalidateQueries({ queryKey: ['investments', 'summary'] });
       setTradeForm(INITIAL_FORM);
-      toast({ title: 'Operacao registrada', description: 'A posicao foi atualizada com sucesso.' });
+      toast({ title: 'Trade recorded', description: 'The position was updated successfully.' });
     },
     onError: (error) => {
       console.error(error);
       toast({
-        title: 'Erro ao registrar operacao',
-        description: 'Confira os dados informados e tente novamente.',
+        title: 'Failed to record trade',
+        description: 'Check the data provided and try again.',
         variant: 'destructive',
       });
     },
@@ -226,8 +226,8 @@ export default function Investimentos() {
   const handleTrade = () => {
     if (!tradeForm.symbol || !tradeForm.name || !tradeForm.price || !tradeForm.quantity) {
       toast({
-        title: 'Preencha os campos obrigatorios',
-        description: 'Simbolo, nome, preco e quantidade sao necessarios.',
+        title: 'Fill in the required fields',
+        description: 'Symbol, name, price and quantity are required.',
         variant: 'destructive',
       });
       return;
@@ -239,8 +239,8 @@ export default function Investimentos() {
 
     if (!Number.isFinite(quantity) || quantity <= 0 || price <= 0) {
       toast({
-        title: 'Valores invalidos',
-        description: 'Quantidade e preco devem ser maiores que zero.',
+        title: 'Invalid values',
+        description: 'Quantity and price must be greater than zero.',
         variant: 'destructive',
       });
       return;
@@ -261,9 +261,9 @@ export default function Investimentos() {
     setIsStreaming((prev) => {
       const next = !prev;
       if (!next) {
-        toast({ title: 'Streaming pausado', description: 'Os dados permanecem visiveis e podem ser retomados quando quiser.' });
+        toast({ title: 'Streaming paused', description: 'The data stays visible and can be resumed whenever you want.' });
       } else {
-        toast({ title: 'Streaming retomado', description: 'Cotas em tempo real reativadas.' });
+        toast({ title: 'Streaming resumed', description: 'Real-time quotes reactivated.' });
         queryClient.invalidateQueries({ queryKey: ['investments'] });
         queryClient.invalidateQueries({ queryKey: ['investments', 'summary'] });
       }
@@ -279,17 +279,17 @@ export default function Investimentos() {
         <main className="flex-1 ml-64 p-6 space-y-8 animate-fade-in">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Carteira de investimentos</h1>
-              <p className="text-muted-foreground">Acompanhe desempenho, rebalanceie em tempo real e registre novas operacoes.</p>
+              <h1 className="text-3xl font-bold tracking-tight">Investment portfolio</h1>
+              <p className="text-muted-foreground">Track performance, rebalance in real time and record new trades.</p>
             </div>
             <Button variant="outline" onClick={toggleStreaming} size="sm">
               {isStreaming ? (
                 <>
-                  <PauseCircle className="mr-2 h-4 w-4" /> Pausar streaming
+                  <PauseCircle className="mr-2 h-4 w-4" /> Pause streaming
                 </>
               ) : (
                 <>
-                  <PlayCircle className="mr-2 h-4 w-4" /> Retomar streaming
+                  <PlayCircle className="mr-2 h-4 w-4" /> Resume streaming
                 </>
               )}
             </Button>
@@ -298,7 +298,7 @@ export default function Investimentos() {
           <div className="grid gap-6 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Patrimonio investido</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Invested assets</CardTitle>
               </CardHeader>
               <CardContent>
                 {summaryQuery.isLoading ? (
@@ -310,7 +310,7 @@ export default function Investimentos() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Dividendos acumulados</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Dividends accrued</CardTitle>
               </CardHeader>
               <CardContent>
                 {summaryQuery.isLoading ? (
@@ -322,7 +322,7 @@ export default function Investimentos() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Performance media</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Average performance</CardTitle>
               </CardHeader>
               <CardContent>
                 {summaryQuery.isLoading ? (
@@ -336,7 +336,7 @@ export default function Investimentos() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Ativos monitorados</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Monitored assets</CardTitle>
               </CardHeader>
               <CardContent>
                 {investmentsQuery.isLoading ? (
@@ -353,11 +353,11 @@ export default function Investimentos() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="flex items-center space-x-2">
                   <LineChartIcon className="h-5 w-5 text-primary" />
-                  <span>Preco em tempo real</span>
+                  <span>Real-time price</span>
                 </CardTitle>
                 <Select value={selectedSymbol} onValueChange={setSelectedSymbol}>
                   <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Ativo" />
+                    <SelectValue placeholder="Asset" />
                   </SelectTrigger>
                   <SelectContent>
                     {displayInvestments.map((investment) => (
@@ -380,7 +380,7 @@ export default function Investimentos() {
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    Aguardando atualizacao de precos para o ativo selecionado.
+                    Waiting for price updates for the selected asset.
                   </div>
                 )}
               </CardContent>
@@ -389,7 +389,7 @@ export default function Investimentos() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="flex items-center space-x-2">
                   <PieChartIcon className="h-5 w-5 text-primary" />
-                  <span>Alocacao por classe</span>
+                  <span>Allocation by class</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="h-72">
@@ -406,7 +406,7 @@ export default function Investimentos() {
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    Cadastre operacoes para visualizar a distribuicao.
+                    Record trades to view the distribution.
                   </div>
                 )}
               </CardContent>
@@ -415,7 +415,7 @@ export default function Investimentos() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Valor total da carteira (tempo real)</CardTitle>
+              <CardTitle>Total portfolio value (real time)</CardTitle>
             </CardHeader>
             <CardContent className="h-72">
               {portfolioHistory.length ? (
@@ -430,7 +430,7 @@ export default function Investimentos() {
                 </ResponsiveContainer>
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  Os dados da carteira serao exibidos assim que as operacoes forem registradas.
+                  Portfolio data will be shown as soon as trades are recorded.
                 </div>
               )}
             </CardContent>
@@ -438,7 +438,7 @@ export default function Investimentos() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Registrar operacao</CardTitle>
+              <CardTitle>Record trade</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-6">
@@ -452,7 +452,7 @@ export default function Investimentos() {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label htmlFor="name">Nome do ativo</Label>
+                  <Label htmlFor="name">Asset name</Label>
                   <Input
                     id="name"
                     placeholder="Petrobras PN"
@@ -461,7 +461,7 @@ export default function Investimentos() {
                   />
                 </div>
                 <div>
-                  <Label>Classe</Label>
+                  <Label>Class</Label>
                   <Select value={tradeForm.assetType} onValueChange={(value) => setTradeForm((prev) => ({ ...prev, assetType: value }))}>
                     <SelectTrigger>
                       <SelectValue />
@@ -476,19 +476,19 @@ export default function Investimentos() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Operacao</Label>
+                  <Label>Side</Label>
                   <Select value={tradeForm.type} onValueChange={(value: TradePayload['type']) => setTradeForm((prev) => ({ ...prev, type: value }))}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="buy">Compra</SelectItem>
-                      <SelectItem value="sell">Venda</SelectItem>
+                      <SelectItem value="buy">Buy</SelectItem>
+                      <SelectItem value="sell">Sell</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="quantity">Quantidade</Label>
+                  <Label htmlFor="quantity">Quantity</Label>
                   <Input
                     id="quantity"
                     type="number"
@@ -498,7 +498,7 @@ export default function Investimentos() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="price">Preco (R$)</Label>
+                  <Label htmlFor="price">Price (R$)</Label>
                   <Input
                     id="price"
                     placeholder="30,50"
@@ -507,7 +507,7 @@ export default function Investimentos() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="fees">Taxas (R$)</Label>
+                  <Label htmlFor="fees">Fees (R$)</Label>
                   <Input
                     id="fees"
                     placeholder="0,00"
@@ -518,7 +518,7 @@ export default function Investimentos() {
               </div>
               <div className="mt-4">
                 <Button onClick={handleTrade} disabled={tradeMutation.isPending}>
-                  {tradeMutation.isPending ? 'Registrando...' : 'Salvar operacao'}
+                  {tradeMutation.isPending ? 'Recording...' : 'Save trade'}
                 </Button>
               </div>
             </CardContent>
@@ -526,7 +526,7 @@ export default function Investimentos() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Posicoes atuais</CardTitle>
+              <CardTitle>Current positions</CardTitle>
             </CardHeader>
             <CardContent>
               {investmentsQuery.isLoading ? (
@@ -548,15 +548,15 @@ export default function Investimentos() {
                       </div>
                       <div className="grid grid-cols-2 gap-6 text-sm md:text-right">
                         <div>
-                          <p className="text-muted-foreground">Quantidade</p>
+                          <p className="text-muted-foreground">Quantity</p>
                           <p className="font-medium">{investment.quantity}</p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Preco atual</p>
+                          <p className="text-muted-foreground">Current price</p>
                           <p className="font-medium">{formatCurrency(investment.current_price)}</p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Valor total</p>
+                          <p className="text-muted-foreground">Total value</p>
                           <p className="font-medium">{formatCurrency(investment.totalValue)}</p>
                         </div>
                         <div>
@@ -571,7 +571,7 @@ export default function Investimentos() {
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                  Nenhuma posicao cadastrada ainda. Registre uma operacao para iniciar o acompanhamento.
+                  No positions registered yet. Record a trade to start tracking.
                 </div>
               )}
             </CardContent>

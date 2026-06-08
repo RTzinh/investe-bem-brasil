@@ -65,7 +65,7 @@ const summarizeFinances = async () => {
     .slice(0, 3)
     .map((goal) => {
       const pct = goal.target_amount > 0 ? (goal.current_amount / goal.target_amount) * 100 : 0;
-      return `- ${goal.name}: ${pct.toFixed(1)}% da meta`;
+      return `- ${goal.name}: ${pct.toFixed(1)}% of the goal`;
     })
     .join('\n');
 
@@ -73,7 +73,7 @@ const summarizeFinances = async () => {
     .slice(0, 3)
     .map(
       (budget) =>
-        `- ${budget.name}: limite de ${budget.limitValue.toLocaleString('pt-BR', {
+        `- ${budget.name}: limit of ${budget.limitValue.toLocaleString('pt-BR', {
           style: 'currency',
           currency: 'BRL',
         })}`,
@@ -81,47 +81,47 @@ const summarizeFinances = async () => {
     .join('\n');
 
   return [
-    `Resumo financeiro atual: receita acumulada ${income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}, gastos ${expenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} e saldo ${balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
-    `Valor estimado da carteira de investimentos: ${portfolioValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
-    goalsSummary ? `Metas principais:\n${goalsSummary}` : 'Sem metas cadastradas até o momento.',
-    budgetsSummary ? `Orçamentos em destaque:\n${budgetsSummary}` : 'Sem orçamentos configurados.',
-    'Para detalhes completos, navegue até as abas Metas, Orçamentos e Investimentos do dashboard.',
+    `Current financial summary: accumulated income ${income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}, spending ${expenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} and balance ${balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
+    `Estimated investment portfolio value: ${portfolioValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
+    goalsSummary ? `Top goals:\n${goalsSummary}` : 'No goals registered yet.',
+    budgetsSummary ? `Featured budgets:\n${budgetsSummary}` : 'No budgets configured.',
+    'For full details, head to the Goals, Budgets and Investments tabs in the dashboard.',
   ].join('\n');
 };
 
 const knowledgeBase: KnowledgeEntry[] = [
   {
-    keywords: ['tesouro selic', 'tesouro direto selic', 'lft'],
+    keywords: ['tesouro selic', 'tesouro direto selic', 'selic', 'lft'],
     answer: [
-      'Tesouro Selic é um título público pós-fixado ligado à taxa básica de juros. Ideal para reserva de emergência por oferecer liquidez diária e baixa oscilação.',
-      'Como funciona:',
-      '- Rentabilidade acompanha a taxa Selic; o saldo cresce diariamente.',
-      '- Liquidez D+1: resgates solicitados até 13h caem no dia útil seguinte.',
-      '- Custos: 0,20% a.a. de taxa B3 + imposto de renda regressivo.',
-      '- Use para objetivos de curto a médio prazo, quando não deseja correr risco de mercado.',
+      'Tesouro Selic is a floating-rate government bond tied to the base interest rate. It is ideal for an emergency fund because it offers daily liquidity and low volatility.',
+      'How it works:',
+      '- The return tracks the Selic rate; the balance grows daily.',
+      '- D+1 liquidity: redemptions requested before 1pm settle on the next business day.',
+      '- Costs: 0.20% per year B3 fee + regressive income tax.',
+      '- Use it for short to medium-term goals when you do not want market risk.',
     ].join('\n'),
   },
   {
-    keywords: ['cdb', 'renda fixa', 'lci', 'lca'],
+    keywords: ['cdb', 'fixed income', 'lci', 'lca'],
     answer: [
-      'CDB, LCI e LCA são títulos bancários. Todos contam com garantia do FGC até R$ 250 mil por instituição e CPF.',
-      'CDB pode ser pós-fixado ao CDI, prefixado ou IPCA+. LCI/LCA são isentos de IR, mas costumam oferecer rentabilidade ligeiramente menor.',
-      'Analise emissor, prazo de vencimento, liquidez prometida e se há carência antes de investir.',
+      'CDB, LCI and LCA are bank-issued securities. All are covered by the FGC guarantee up to R$ 250,000 per institution and per taxpayer.',
+      'A CDB can be floating-rate (CDI), fixed-rate or IPCA+. LCI/LCA are income-tax exempt but usually offer a slightly lower return.',
+      'Review the issuer, maturity, promised liquidity and any lock-up period before investing.',
     ].join('\n'),
   },
   {
-    keywords: ['carteira diversificada', 'acoes', 'fii', 'etf', 'diversificar'],
+    keywords: ['diversified portfolio', 'stocks', 'fii', 'etf', 'diversify', 'allocation', 'portfolio'],
     answer: [
-      'Uma carteira diversificada mistura várias classes: renda fixa (estabilidade), renda variável (crescimento) e instrumentos de renda (FIIs, multimercados).',
-      'Passos práticos:',
-      '1. Defina objetivo e prazo para saber quanto suportar de volatilidade;',
-      '2. Distribua percentuais-alvo para cada classe (ex.: 50% renda fixa, 30% ações/ETFs, 20% FIIs);',
-      '3. Rebalanceie todo trimestre ou semestre trazendo cada classe de volta ao alvo;',
-      '4. Use produtos de baixo custo (ETFs) e diversifique emissores em renda fixa.',
+      'A diversified portfolio blends several classes: fixed income (stability), equities (growth) and income instruments (REITs/FIIs, hedge funds).',
+      'Practical steps:',
+      '1. Define your goal and time horizon to know how much volatility you can tolerate;',
+      '2. Set target percentages for each class (e.g. 50% fixed income, 30% stocks/ETFs, 20% FIIs);',
+      '3. Rebalance every quarter or half-year, bringing each class back to its target;',
+      '4. Use low-cost products (ETFs) and diversify issuers within fixed income.',
     ].join('\n'),
   },
   {
-    keywords: ['resumo financeiro', 'visao geral', 'resumo do mes'],
+    keywords: ['financial summary', 'overview', 'summary for the month'],
     answer: async () => summarizeFinances(),
   },
 ];
@@ -138,12 +138,12 @@ const fallbackForMessages = async (history: ChatMessage[]) => {
   }
 
   const generic = [
-    'Não consegui contato com o modelo de IA. Seguem orientações gerais:',
-    lastUserMessage?.content ? `Resumo do que você perguntou: "${lastUserMessage.content}".` : undefined,
-    '1. Revise o objetivo financeiro e o prazo de uso do dinheiro;',
-    '2. Compare rentabilidades, risco e liquidez das alternativas;',
-    '3. Monte um plano de aportes recorrentes e acompanhe seu dashboard periodicamente;',
-    'Valide se o backend inteligente está em execução e se a chave GEMINI_API_KEY está ativa no serviço FastAPI.',
+    'I could not reach the AI model. Here is some general guidance:',
+    lastUserMessage?.content ? `Summary of what you asked: "${lastUserMessage.content}".` : undefined,
+    '1. Review your financial goal and the time horizon for the money;',
+    '2. Compare returns, risk and liquidity across the alternatives;',
+    '3. Set up a recurring contribution plan and check your dashboard regularly;',
+    'Verify that the intelligent backend is running and that the GEMINI_API_KEY is active in the FastAPI service.',
   ].filter(Boolean);
 
   return generic.join('\n');
@@ -161,7 +161,7 @@ router.post('/', async (req, res) => {
   const validation = requestSchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(400).json({
-      message: 'Conversa inválida.',
+      message: 'Invalid conversation.',
       details: validation.error.flatten(),
     });
   }

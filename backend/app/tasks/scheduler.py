@@ -101,10 +101,10 @@ class Scheduler:
                             asset_symbol=action.symbol,
                             alert_type=AlertType.rebalance,
                             severity=AlertSeverity.info,
-                            title=f"Sugerir {action.action.upper()} de {action.symbol}",
+                            title=f"Suggest {action.action.upper()} of {action.symbol}",
                             message=(
-                                f"Peso atual {action.current_weight:.2%} vs alvo {action.target_weight:.2%}. "
-                                f"Quantidade sugerida: {action.trade_quantity:.2f} ({action.estimated_cost:.2f} em custos)."
+                                f"Current weight {action.current_weight:.2%} vs target {action.target_weight:.2%}. "
+                                f"Suggested quantity: {action.trade_quantity:.2f} ({action.estimated_cost:.2f} in costs)."
                             ),
                             context={
                                 "action": action.action,

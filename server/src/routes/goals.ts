@@ -16,15 +16,15 @@ const goalPayloadSchema = z
     category: z.string().trim().min(1).max(120),
     target_amount: z.coerce
       .number()
-      .refine((value) => Number.isFinite(value) && value >= 0, { message: 'Valor alvo inválido' }),
+      .refine((value) => Number.isFinite(value) && value >= 0, { message: 'Invalid target amount' }),
     current_amount: z.coerce
       .number()
-      .refine((value) => Number.isFinite(value) && value >= 0, { message: 'Valor atual inválido' }),
+      .refine((value) => Number.isFinite(value) && value >= 0, { message: 'Invalid current amount' }),
     monthly_contribution: z.coerce
       .number()
       .refine(
         (value) => Number.isFinite(value) && value >= 0,
-        { message: 'Aporte mensal inválido' },
+        { message: 'Invalid monthly contribution' },
       ),
     deadline: z
       .string()
@@ -82,7 +82,7 @@ router.post('/', (req, res) => {
 
   if (!parsed.success) {
     return res.status(400).json({
-      message: 'Dados inválidos para meta.',
+      message: 'Invalid data for the goal.',
       details: parsed.error.flatten(),
     });
   }
@@ -114,7 +114,7 @@ router.put('/:id', (req, res) => {
 
   if (!parsed.success) {
     return res.status(400).json({
-      message: 'Dados inválidos para atualizar meta.',
+      message: 'Invalid data for updating the goal.',
       details: parsed.error.flatten(),
     });
   }
@@ -123,7 +123,7 @@ router.put('/:id', (req, res) => {
   const { id } = req.params;
   const existing = db.prepare('SELECT * FROM goals WHERE id = ?').get(id) as Goal | undefined;
   if (!existing) {
-    return res.status(404).json({ message: 'Meta não encontrada.' });
+    return res.status(404).json({ message: 'Goal not found.' });
   }
 
   db.prepare(
@@ -149,14 +149,14 @@ router.put('/:id', (req, res) => {
 const contributionSchema = z.object({
   amount: z.coerce
     .number()
-    .refine((value) => Number.isFinite(value) && value > 0, { message: 'Valor inválido' }),
+    .refine((value) => Number.isFinite(value) && value > 0, { message: 'Invalid amount' }),
 });
 
 router.post('/:id/contribute', (req, res) => {
   const parsed = contributionSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
-      message: 'Valor de contribuição inválido.',
+      message: 'Invalid contribution amount.',
       details: parsed.error.flatten(),
     });
   }
@@ -164,7 +164,7 @@ router.post('/:id/contribute', (req, res) => {
   const { id } = req.params;
   const existing = db.prepare('SELECT * FROM goals WHERE id = ?').get(id) as Goal | undefined;
   if (!existing) {
-    return res.status(404).json({ message: 'Meta não encontrada.' });
+    return res.status(404).json({ message: 'Goal not found.' });
   }
 
   const newAmount = existing.current_amount + parsed.data.amount;
@@ -177,8 +177,8 @@ router.delete('/:id', (req, res) => {
   const { id } = req.params;
   const result = db.prepare('DELETE FROM goals WHERE id = ?').run(id);
   if (result.changes === 0) {
-    logger.warn({ goalId: id }, 'Tentativa de excluir meta inexistente');
-    return res.status(404).json({ message: 'Meta não encontrada.' });
+    logger.warn({ goalId: id }, 'Attempt to delete a non-existent goal');
+    return res.status(404).json({ message: 'Goal not found.' });
   }
   res.status(204).send();
 });

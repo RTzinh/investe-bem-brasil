@@ -10,8 +10,8 @@ import { useDashboardOverview } from '@/hooks/use-dashboard';
 const LoadingState = () => (
   <div className="space-y-6">
     <div>
-      <h2 className="text-2xl font-bold text-foreground">Visao geral financeira</h2>
-      <p className="text-muted-foreground">Carregando dados atualizados...</p>
+      <h2 className="text-2xl font-bold text-foreground">Financial overview</h2>
+      <p className="text-muted-foreground">Loading the latest data...</p>
     </div>
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {[0, 1, 2, 3].map((item) => (
@@ -55,40 +55,40 @@ export function FinancialOverview() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Visao geral financeira</h2>
-        <p className="text-muted-foreground">Sua situacao financeira em tempo real</p>
+        <h2 className="text-2xl font-bold text-foreground">Financial overview</h2>
+        <p className="text-muted-foreground">Your financial situation in real time</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Saldo total"
+          title="Total balance"
           value={formatCurrency(metrics.balance)}
-          change={`Investimentos: ${formatCurrency(metrics.totalInvestments)}`}
+          change={`Investments: ${formatCurrency(metrics.totalInvestments)}`}
           changeType={metrics.balance >= 0 ? 'positive' : 'negative'}
           icon={<DollarSign />}
           gradient
         />
 
         <StatCard
-          title="Receitas do mes"
+          title="Income this month"
           value={formatCurrency(metrics.income)}
-          change={`Metas concluidas: ${metrics.completedGoals}`}
+          change={`Goals completed: ${metrics.completedGoals}`}
           changeType="neutral"
           icon={<TrendingUp />}
         />
 
         <StatCard
-          title="Gastos do mes"
+          title="Spending this month"
           value={formatCurrency(metrics.expenses)}
-          change={`${metrics.warningBudgets} orcamentos em atencao`}
+          change={`${metrics.warningBudgets} budgets need attention`}
           changeType={metrics.warningBudgets > 0 ? 'negative' : 'positive'}
           icon={<TrendingDown />}
         />
 
         <StatCard
-          title="Investimentos"
+          title="Investments"
           value={formatCurrency(metrics.totalInvestments)}
-          change={`Dividendos acumulados: ${formatCurrency(metrics.totalDividends)}`}
+          change={`Dividends accrued: ${formatCurrency(metrics.totalDividends)}`}
           changeType={metrics.totalDividends >= 0 ? 'positive' : 'neutral'}
           icon={<TrendingUp />}
         />
@@ -96,19 +96,19 @@ export function FinancialOverview() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <StatCard
-          title="Resultado do mes"
+          title="Monthly result"
           value={formatCurrency(metrics.income - metrics.expenses)}
-          change={metrics.balance >= 0 ? 'Superavit' : 'Deficit'}
+          change={metrics.balance >= 0 ? 'Surplus' : 'Deficit'}
           changeType={metrics.balance >= 0 ? 'positive' : 'negative'}
           className="md:col-span-1"
         />
 
         <StatCard
-          title="Reserva de emergencia"
+          title="Emergency fund"
           value={formatCurrency(emergencyFund)}
           change={emergencyGoal
-            ? `${formatPercentage(emergencyProgress)} da meta (${formatCurrency(emergencyTarget)})`
-            : 'Cadastre uma meta de reserva para acompanhar aqui'}
+            ? `${formatPercentage(emergencyProgress)} of the goal (${formatCurrency(emergencyTarget)})`
+            : 'Create an emergency fund goal to track it here'}
           changeType={emergencyProgress >= 100 ? 'positive' : emergencyProgress >= 50 ? 'neutral' : 'negative'}
           icon={<Target />}
           className="md:col-span-1"
@@ -117,20 +117,20 @@ export function FinancialOverview() {
 
       <div className="flex flex-wrap gap-3">
         <Button asChild variant="outline">
-          <Link to="/orcamentos" className="flex items-center">
-            Revisar gastos
+          <Link to="/budgets" className="flex items-center">
+            Review spending
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
         <Button asChild variant="outline">
-          <Link to="/relatorios" className="flex items-center">
-            Ver relatorios completos
+          <Link to="/reports" className="flex items-center">
+            View full reports
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
         <Button asChild>
-          <Link to="/assistente" className="flex items-center">
-            Chamar assistente
+          <Link to="/assistant" className="flex items-center">
+            Open assistant
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>

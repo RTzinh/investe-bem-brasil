@@ -68,12 +68,12 @@ const syncInvestmentsWithFastApi = async () => {
 
     updateMany(investments);
   } catch (error) {
-    logger.warn({ err: error }, 'Falha ao sincronizar preços com FastAPI');
+    logger.warn({ err: error }, 'Failed to sync prices with FastAPI');
   }
 };
 
 io.on('connection', (socket) => {
-  socket.emit('investment:ready', { message: 'Conectado à stream de investimentos.' });
+  socket.emit('investment:ready', { message: 'Connected to the investment stream.' });
   const investments = db.prepare('SELECT * FROM investments').all() as Investment[];
   socket.emit('investment:stream', {
     data: investments.map((inv) => ({

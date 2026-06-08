@@ -1,5 +1,5 @@
 /**
- * Formatação brasileira para moeda, datas e números
+ * Brazilian formatting for currency, dates and numbers
  */
 
 export const formatCurrency = (amount: number): string => {

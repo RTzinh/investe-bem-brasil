@@ -98,27 +98,27 @@ if (shouldSeed && !existsData('transactions')) {
   const sample = [
     {
       date: new Date().toISOString().slice(0, 10),
-      description: 'Salário CLT',
-      category: 'Renda',
-      account: 'Conta Corrente',
+      description: 'Salary',
+      category: 'Income',
+      account: 'Checking Account',
       type: 'income',
       amount: 8500,
-      notes: 'Empresa XPTO'
+      notes: 'XPTO Company'
     },
     {
       date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString().slice(0, 10),
-      description: 'Supermercado Bom Preço',
-      category: 'Alimentação',
-      account: 'Cartão Crédito',
+      description: 'Supermarket',
+      category: 'Food',
+      account: 'Credit Card',
       type: 'expense',
       amount: 420.35,
       notes: ''
     },
     {
       date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString().slice(0, 10),
-      description: 'Aluguel',
-      category: 'Moradia',
-      account: 'Conta Corrente',
+      description: 'Rent',
+      category: 'Housing',
+      account: 'Checking Account',
       type: 'expense',
       amount: 2300,
       notes: ''
@@ -135,22 +135,22 @@ if (shouldSeed && !existsData('budgets')) {
     VALUES (@id, @name, @category, @limit, @period, @notes)`);
   const sample = [
     {
-      name: 'Alimentação',
-      category: 'Alimentação',
+      name: 'Food',
+      category: 'Food',
       limit: 1500,
       period: 'mensal',
-      notes: 'Meta baseada na média dos últimos 3 meses'
+      notes: 'Target based on the average of the last 3 months'
     },
     {
-      name: 'Transporte',
-      category: 'Transporte',
+      name: 'Transport',
+      category: 'Transport',
       limit: 600,
       period: 'mensal',
       notes: ''
     },
     {
-      name: 'Lazer',
-      category: 'Lazer',
+      name: 'Leisure',
+      category: 'Leisure',
       limit: 500,
       period: 'mensal',
       notes: ''
@@ -168,18 +168,18 @@ if (shouldSeed && !existsData('goals')) {
   const today = new Date();
   const sample = [
     {
-      name: 'Reserva de Emergência',
-      category: 'Segurança',
+      name: 'Emergency Fund',
+      category: 'Emergency',
       target_amount: 40000,
       current_amount: 22500,
       monthly_contribution: 2000,
       deadline: new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()).toISOString(),
       priority: 'alta',
-      notes: 'Cobrir 12 meses de despesas'
+      notes: 'Cover 12 months of expenses'
     },
     {
-      name: 'Viagem Internacional',
-      category: 'Lazer',
+      name: 'International Trip',
+      category: 'Leisure',
       target_amount: 25000,
       current_amount: 8000,
       monthly_contribution: 1200,

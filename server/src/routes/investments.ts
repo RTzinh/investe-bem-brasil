@@ -44,7 +44,7 @@ router.post('/trade', (req, res) => {
   const { symbol, name, type, quantity, price, fees, executed_at, assetType } = req.body;
 
   if (!symbol || !name || !type || typeof quantity !== 'number' || typeof price !== 'number') {
-    return res.status(400).json({ message: 'Dados inválidos para registrar operação.' });
+    return res.status(400).json({ message: 'Invalid data for recording a trade.' });
   }
 
   const tradeType = type === 'sell' ? 'sell' : 'buy';
@@ -55,7 +55,7 @@ router.post('/trade', (req, res) => {
 
   if (!investment) {
     if (tradeType === 'sell') {
-      return res.status(400).json({ message: 'Não é possível vender um ativo que não está em carteira.' });
+      return res.status(400).json({ message: 'Cannot sell an asset that is not in the portfolio.' });
     }
 
     const investmentId = randomUUID();
@@ -82,7 +82,7 @@ router.post('/trade', (req, res) => {
     newAvgPrice = newQuantity > 0 ? totalInvested / newQuantity : investment.avg_price;
   } else {
     if (quantity > investment.quantity) {
-      return res.status(400).json({ message: 'Quantidade para venda maior que posição atual.' });
+      return res.status(400).json({ message: 'Sell quantity is greater than the current position.' });
     }
     newQuantity = investment.quantity - quantity;
     if (newQuantity === 0) {
@@ -105,11 +105,11 @@ router.post('/:symbol/price', (req, res) => {
   const { symbol } = req.params;
   const { price } = req.body;
   if (typeof price !== 'number') {
-    return res.status(400).json({ message: 'Preço inválido.' });
+    return res.status(400).json({ message: 'Invalid price.' });
   }
   const investment = db.prepare('SELECT * FROM investments WHERE symbol = ?').get(symbol) as Investment | undefined;
   if (!investment) {
-    return res.status(404).json({ message: 'Ativo não encontrado.' });
+    return res.status(404).json({ message: 'Asset not found.' });
   }
   db.prepare('UPDATE investments SET current_price = ? WHERE id = ?').run(price, investment.id);
   const updated = db.prepare('SELECT * FROM investments WHERE id = ?').get(investment.id) as Investment;

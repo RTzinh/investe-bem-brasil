@@ -57,20 +57,20 @@ interface TransactionForm {
 }
 
 const BASE_CATEGORIES = [
-  'Alimentação > Mercado',
-  'Alimentação > Restaurante',
-  'Moradia > Aluguel',
-  'Transporte > Combustível',
-  'Saúde > Farmácia',
-  'Educação > Cursos',
-  'Investimentos',
-  'Salário',
+  'Food > Groceries',
+  'Food > Dining out',
+  'Housing > Rent',
+  'Transport > Fuel',
+  'Health > Pharmacy',
+  'Education > Courses',
+  'Investments',
+  'Salary',
   'Freelance',
 ];
 
-const BASE_ACCOUNTS = ['Conta Corrente', 'Poupança', 'Cartão de Crédito', 'Carteira', 'Corretora'];
+const BASE_ACCOUNTS = ['Checking Account', 'Savings', 'Credit Card', 'Wallet', 'Brokerage'];
 
-export default function Transacoes() {
+export default function Transactions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -126,15 +126,15 @@ export default function Transacoes() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       setNewTransaction(INITIAL_FORM);
       toast({
-        title: 'Transação registrada',
-        description: 'Os dados foram salvos com sucesso.',
+        title: 'Transaction recorded',
+        description: 'The data was saved successfully.',
       });
     },
     onError: (error) => {
       console.error(error);
       toast({
-        title: 'Erro ao salvar transação',
-        description: 'Tente novamente em instantes.',
+        title: 'Failed to save transaction',
+        description: 'Please try again in a moment.',
         variant: 'destructive',
       });
     },
@@ -145,15 +145,15 @@ export default function Transacoes() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       toast({
-        title: 'Importação concluída',
-        description: `${result.imported} transações foram adicionadas com sucesso.`,
+        title: 'Import complete',
+        description: `${result.imported} transactions were added successfully.`,
       });
     },
     onError: (error) => {
       console.error(error);
       toast({
-        title: 'Falha ao importar',
-        description: 'Não foi possível processar o extrato informado.',
+        title: 'Import failed',
+        description: 'Unable to process the provided statement.',
         variant: 'destructive',
       });
     },
@@ -163,8 +163,8 @@ export default function Transacoes() {
     const amountValue = parseFormattedCurrency(newTransaction.amount);
     if (!newTransaction.description || amountValue <= 0 || !newTransaction.category || !newTransaction.account) {
       toast({
-        title: 'Preencha todos os campos obrigatórios',
-        description: 'Descrição, valor, categoria e conta são necessários.',
+        title: 'Fill in all required fields',
+        description: 'Description, amount, category and account are required.',
         variant: 'destructive',
       });
       return;
@@ -194,13 +194,13 @@ export default function Transacoes() {
   const handleExport = () => {
     if (!transactions.length) {
       toast({
-        title: 'Nenhuma transação para exportar',
-        description: 'Registre ou importe transações antes de exportar.',
+        title: 'No transactions to export',
+        description: 'Record or import transactions before exporting.',
       });
       return;
     }
 
-    const header = 'Descrição,Valor,Tipo,Categoria,Conta,Data\n';
+    const header = 'Description,Amount,Type,Category,Account,Date\n';
     const body = transactions
       .map((transaction) => [
         transaction.description,
@@ -215,15 +215,15 @@ export default function Transacoes() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'transacoes.csv';
+    link.download = 'transactions.csv';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
     toast({
-      title: 'Exportação concluída',
-      description: 'Arquivo CSV gerado com sucesso.',
+      title: 'Export complete',
+      description: 'CSV file generated successfully.',
     });
   };
 
@@ -235,8 +235,8 @@ export default function Transacoes() {
         <main className="flex-1 ml-64 p-6 space-y-8 animate-fade-in">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Transações</h1>
-              <p className="text-muted-foreground">Gerencie seus lançamentos financeiros, importações e conciliações.</p>
+              <h1 className="text-3xl font-bold tracking-tight">Transactions</h1>
+              <p className="text-muted-foreground">Manage your financial entries, imports and reconciliations.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <input
@@ -252,48 +252,48 @@ export default function Transacoes() {
                 disabled={importMutation.isPending}
               >
                 <Upload className="mr-2 h-4 w-4" />
-                Importar Extrato CSV
+                Import CSV Statement
               </Button>
               <Button variant="outline" onClick={handleExport}>
                 <Download className="mr-2 h-4 w-4" />
-                Exportar CSV
+                Export CSV
               </Button>
               <Dialog>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
-                    Nova Transação
+                    New Transaction
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Registrar transação</DialogTitle>
+                    <DialogTitle>Record transaction</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="description">Descrição</Label>
+                      <Label htmlFor="description">Description</Label>
                       <Input
                         id="description"
                         value={newTransaction.description}
                         onChange={(event) => setNewTransaction((prev) => ({ ...prev, description: event.target.value }))}
-                        placeholder="Ex.: Supermercado, salário, etc."
+                        placeholder="e.g. Groceries, salary, etc."
                       />
                     </div>
                     <div className="grid gap-2 md:grid-cols-2">
                       <div>
-                        <Label>Tipo</Label>
+                        <Label>Type</Label>
                         <Select value={newTransaction.type} onValueChange={(value: 'income' | 'expense') => setNewTransaction((prev) => ({ ...prev, type: value }))}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="expense">Despesa</SelectItem>
-                            <SelectItem value="income">Receita</SelectItem>
+                            <SelectItem value="expense">Expense</SelectItem>
+                            <SelectItem value="income">Income</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div>
-                        <Label htmlFor="amount">Valor (R$)</Label>
+                        <Label htmlFor="amount">Amount (R$)</Label>
                         <Input
                           id="amount"
                           value={newTransaction.amount}
@@ -304,10 +304,10 @@ export default function Transacoes() {
                     </div>
                     <div className="grid gap-2 md:grid-cols-2">
                       <div>
-                        <Label>Categoria</Label>
+                        <Label>Category</Label>
                         <Select value={newTransaction.category} onValueChange={(value) => setNewTransaction((prev) => ({ ...prev, category: value }))}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
+                            <SelectValue placeholder="Select" />
                           </SelectTrigger>
                           <SelectContent>
                             {dynamicCategories.map((category) => (
@@ -319,10 +319,10 @@ export default function Transacoes() {
                         </Select>
                       </div>
                       <div>
-                        <Label>Conta</Label>
+                        <Label>Account</Label>
                         <Select value={newTransaction.account} onValueChange={(value) => setNewTransaction((prev) => ({ ...prev, account: value }))}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
+                            <SelectValue placeholder="Select" />
                           </SelectTrigger>
                           <SelectContent>
                             {dynamicAccounts.map((account) => (
@@ -336,7 +336,7 @@ export default function Transacoes() {
                     </div>
                     <div className="grid gap-2 md:grid-cols-2">
                       <div>
-                        <Label htmlFor="date">Data</Label>
+                        <Label htmlFor="date">Date</Label>
                         <Input
                           id="date"
                           type="date"
@@ -345,18 +345,18 @@ export default function Transacoes() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="notes">Observações</Label>
+                        <Label htmlFor="notes">Notes</Label>
                         <Textarea
                           id="notes"
                           value={newTransaction.notes}
                           onChange={(event) => setNewTransaction((prev) => ({ ...prev, notes: event.target.value }))}
-                          placeholder="Anotações adicionais"
+                          placeholder="Additional notes"
                           rows={2}
                         />
                       </div>
                     </div>
                     <Button onClick={handleAddTransaction} disabled={createMutation.isPending} className="w-full">
-                      {createMutation.isPending ? 'Salvando...' : 'Adicionar Transação'}
+                      {createMutation.isPending ? 'Saving...' : 'Add Transaction'}
                     </Button>
                   </div>
                 </DialogContent>
@@ -367,7 +367,7 @@ export default function Transacoes() {
           <div className="grid gap-6 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total de Receitas</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Income</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-financial-gain">{formatCurrency(summary.income)}</p>
@@ -375,7 +375,7 @@ export default function Transacoes() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total de Despesas</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Expenses</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-financial-loss">{formatCurrency(summary.expenses)}</p>
@@ -383,7 +383,7 @@ export default function Transacoes() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Saldo do Período</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Period Balance</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">{formatCurrency(summary.balance)}</p>
@@ -391,7 +391,7 @@ export default function Transacoes() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Transações</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Transactions</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">{summary.count}</p>
@@ -402,12 +402,12 @@ export default function Transacoes() {
           <Card>
             <CardHeader>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <CardTitle>Histórico de Transações</CardTitle>
+                <CardTitle>Transaction History</CardTitle>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Buscar descrição, categoria ou conta..."
+                      placeholder="Search description, category or account..."
                       className="pl-9"
                       value={filters.search}
                       onChange={(event) => setFilters((prev) => ({ ...prev, search: event.target.value }))}
@@ -415,20 +415,20 @@ export default function Transacoes() {
                   </div>
                   <Select value={filters.type} onValueChange={(value: Filters['type']) => setFilters((prev) => ({ ...prev, type: value }))}>
                     <SelectTrigger className="w-[150px]">
-                      <SelectValue placeholder="Tipo" />
+                      <SelectValue placeholder="Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="income">Receitas</SelectItem>
-                      <SelectItem value="expense">Despesas</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="income">Income</SelectItem>
+                      <SelectItem value="expense">Expenses</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={filters.category} onValueChange={(value) => setFilters((prev) => ({ ...prev, category: value }))}>
                     <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Categoria" />
+                      <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todas categorias</SelectItem>
+                      <SelectItem value="all">All categories</SelectItem>
                       {dynamicCategories.map((category) => (
                         <SelectItem key={category} value={category}>
                           {category}
@@ -438,10 +438,10 @@ export default function Transacoes() {
                   </Select>
                   <Select value={filters.account} onValueChange={(value) => setFilters((prev) => ({ ...prev, account: value }))}>
                     <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Conta" />
+                      <SelectValue placeholder="Account" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todas contas</SelectItem>
+                      <SelectItem value="all">All accounts</SelectItem>
                       {dynamicAccounts.map((account) => (
                         <SelectItem key={account} value={account}>
                           {account}
@@ -491,7 +491,7 @@ export default function Transacoes() {
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                  Nenhuma transação encontrada com os filtros selecionados.
+                  No transactions found with the selected filters.
                 </div>
               )}
             </CardContent>
